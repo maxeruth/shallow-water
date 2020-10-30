@@ -403,6 +403,8 @@ int central2d_xrun(float* restrict u, float* restrict v,
 
 central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
 {
+    int BLOCK_X = 4;
+    int BLOCK_Y = 4;
     central2d_t* sim_sub = (central2d_t*) malloc(sizeof(central2d_t));
     sim_sub->nx = sim->nx/BLOCK_X; // BLOCK_X number of blocks in x direction
     sim_sub->ny = sim->ny/BLOCK_Y; // BLOCK_Y number of blocks in y direction
@@ -427,7 +429,7 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
     int i_by = by * sim_sub->ny;
 
     // copy params to subdomain for parallelization
-    for (int iy = 0: iy < M; ++iy){
+    for (int iy = 0; iy < M; ++iy){
         for (int ix = 0; ix < M; ++ix){
             sim_sub->u[iy*M+ix] = sim->u + central2d_offset(sim, 0, i_bx, i_by) - N + iy*N + ix;
             sim_sub->u[iy*M+ix + NN] = sim->u + central2d_offset(sim, 1, i_bx, i_by) - N + iy*N + ix;
@@ -436,24 +438,26 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
         }
     }
 
-    sim_sub->v  = sim_sub->u +   NN;
-    sim_sub->f  = sim_sub->u + 2*NN;
-    sim_sub->g  = sim_sub->u + 3*NN;
-    sim_sub->scratch = sim_sub->u + 4*NN;
+    sim_sub->v  = sim_sub->u +   N;
+    sim_sub->f  = sim_sub->u + 2*N;
+    sim_sub->g  = sim_sub->u + 3*N;
+    sim_sub->scratch = sim_sub->u + 4*N;
 
     return sim_sub;
 }
 
 int central2d_run(central2d_t* sim, float tfinal, int num_domain)
 {
-    sim_sub = copy_subdomain(sim, num_domain); // blocking, copy the original domain into a few sub-domains
+    for (int i = 0; i < num_domain; ++i){
+    sim_sub = copy_subdomain(sim, i); // blocking, copy the original domain into a few sub-domains
     
     central2d_xrun(sim_sub->u, sim_sub->v, sim_sub->scratch,
                    sim_sub->f, sim_sub->g,
                    sim_sub->nx, sim_sub->ny, sim_sub->ng,
                    sim_sub->nfield, sim_sub->flux, sim_sub->speed,
                    tfinal, sim_sub->dx, sim_sub->dy, sim_sub->cfl);
-
+    }
+    
     // return central2d_xrun(sim->u, sim->v, sim->scratch,
     //                       sim->f, sim->g,
     //                       sim->nx, sim->ny, sim->ng,
