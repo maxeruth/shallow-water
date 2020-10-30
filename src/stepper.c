@@ -431,17 +431,17 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
     // copy params to subdomain for parallelization
     for (int iy = 0; iy < M; ++iy){
         for (int ix = 0; ix < M; ++ix){
-            sim_sub->u[iy*M+ix] = sim->u + central2d_offset(sim, 0, i_bx, i_by) - N + iy*N + ix;
-            sim_sub->u[iy*M+ix + NN] = sim->u + central2d_offset(sim, 1, i_bx, i_by) - N + iy*N + ix;
-            sim_sub->u[iy*M+ix + 2*NN] = sim->u + central2d_offset(sim, 2, i_bx, i_by) - N + iy*N + ix;
-            sim_sub->u[iy*M+ix + 3*NN] = sim->u + central2d_offset(sim, 3, i_bx, i_by) - N + iy*N + ix;
+            sim_sub->u[iy*M+ix] = (sim->u + central2d_offset(sim, 0, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + NN] = (sim->u + central2d_offset(sim, 1, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + 2*NN] = (sim->u + central2d_offset(sim, 2, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + 3*NN] = (sim->u + central2d_offset(sim, 3, i_bx, i_by) - N)[iy*N + ix];
         }
     }
 
-    sim_sub->v  = sim_sub->u +   N;
-    sim_sub->f  = sim_sub->u + 2*N;
-    sim_sub->g  = sim_sub->u + 3*N;
-    sim_sub->scratch = sim_sub->u + 4*N;
+    sim_sub->v  = sim_sub->u +   NN;
+    sim_sub->f  = sim_sub->u + 2*NN;
+    sim_sub->g  = sim_sub->u + 3*NN;
+    sim_sub->scratch = sim_sub->u + 4*NN;
 
     return sim_sub;
 }
@@ -449,7 +449,7 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
 int central2d_run(central2d_t* sim, float tfinal, int num_domain)
 {
     for (int i = 0; i < num_domain; ++i){
-    sim_sub = copy_subdomain(sim, i); // blocking, copy the original domain into a few sub-domains
+    central2d_t* sim_sub = copy_subdomain(sim, i); // blocking, copy the original domain into a few sub-domains
     
     central2d_xrun(sim_sub->u, sim_sub->v, sim_sub->scratch,
                    sim_sub->f, sim_sub->g,
