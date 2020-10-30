@@ -390,16 +390,73 @@ int central2d_xrun(float* restrict u, float* restrict v,
                        dt, dx, dy);
         t += 2*dt;
         nstep += 2;
+
+        // make communication between different cores
+
+
+
+
     }
     return nstep;
 }
 
 
-int central2d_run(central2d_t* sim, float tfinal)
+central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
 {
-    return central2d_xrun(sim->u, sim->v, sim->scratch,
-                          sim->f, sim->g,
-                          sim->nx, sim->ny, sim->ng,
-                          sim->nfield, sim->flux, sim->speed,
-                          tfinal, sim->dx, sim->dy, sim->cfl);
+    central2d_t* sim_sub = (central2d_t*) malloc(sizeof(central2d_t));
+    sim_sub->nx = sim->nx/BLOCK_X; // BLOCK_X number of blocks in x direction
+    sim_sub->ny = sim->ny/BLOCK_Y; // BLOCK_Y number of blocks in y direction
+    sim_sub->ng = sim->ng;
+    sim_sub->nfield = sim->nfield;
+    sim_sub->dx = sim->dx;
+    sim_sub->dy = sim->dy;
+    sim_sub->flux = sim->flux;
+    sim_sub->speed = sim->speed;
+    sim_sub->cfl = sim->cfl;
+
+    int N = sim->nx + 2*sim->ng; // size of original matrix plus ghost cells
+    int M = sim_sub->nx + 2*sim_sub->ng; // size of blocking matrix plus ghost cells
+    int nc_block = M * M;
+    int NN  = sim_sub->nfield * nc_block;
+    sim_sub->u  = (float*) malloc((4*NN + 6*M)* sizeof(float));
+
+    // coordinates of the blocking matrix in original matrix without ghost cells
+    int bx = num_domain/BLOCK_X;
+    int by = num_domain%BLOCK_X;
+    int i_bx = bx * sim_sub->nx;
+    int i_by = by * sim_sub->ny;
+
+    // copy params to subdomain for parallelization
+    for (int iy = 0: iy < M; ++iy){
+        for (int ix = 0; ix < M; ++ix){
+            sim_sub->u[iy*M+ix] = sim->u + central2d_offset(sim, 0, i_bx, i_by) - N + iy*N + ix;
+            sim_sub->u[iy*M+ix + NN] = sim->u + central2d_offset(sim, 1, i_bx, i_by) - N + iy*N + ix;
+            sim_sub->u[iy*M+ix + 2*NN] = sim->u + central2d_offset(sim, 2, i_bx, i_by) - N + iy*N + ix;
+            sim_sub->u[iy*M+ix + 3*NN] = sim->u + central2d_offset(sim, 3, i_bx, i_by) - N + iy*N + ix;
+        }
+    }
+
+    sim_sub->v  = sim_sub->u +   N;
+    sim_sub->f  = sim_sub->u + 2*N;
+    sim_sub->g  = sim_sub->u + 3*N;
+    sim_sub->scratch = sim_sub->u + 4*N;
+
+    return sim_sub;
+}
+
+int central2d_run(central2d_t* sim, float tfinal, int num_domain)
+{
+    sim_sub = copy_subdomain(sim, num_domain); // blocking, copy the original domain into a few sub-domains
+    
+    central2d_xrun(sim_sub->u, sim_sub->v, sim_sub->scratch,
+                   sim_sub->f, sim_sub->g,
+                   sim_sub->nx, sim_sub->ny, sim_sub->ng,
+                   sim_sub->nfield, sim_sub->flux, sim_sub->speed,
+                   tfinal, sim_sub->dx, sim_sub->dy, sim_sub->cfl);
+
+    // return central2d_xrun(sim->u, sim->v, sim->scratch,
+    //                       sim->f, sim->g,
+    //                       sim->nx, sim->ny, sim->ng,
+    //                       sim->nfield, sim->flux, sim->speed,
+    //                       tfinal, sim->dx, sim->dy, sim->cfl);
 }
