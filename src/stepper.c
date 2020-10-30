@@ -436,10 +436,10 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
         }
     }
 
-    sim_sub->v  = sim_sub->u +   N;
-    sim_sub->f  = sim_sub->u + 2*N;
-    sim_sub->g  = sim_sub->u + 3*N;
-    sim_sub->scratch = sim_sub->u + 4*N;
+    sim_sub->v  = sim_sub->u +   NN;
+    sim_sub->f  = sim_sub->u + 2*NN;
+    sim_sub->g  = sim_sub->u + 3*NN;
+    sim_sub->scratch = sim_sub->u + 4*NN;
 
     return sim_sub;
 }
