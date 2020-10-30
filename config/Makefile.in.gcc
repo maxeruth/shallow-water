@@ -17,7 +17,7 @@ CFLAGS+=$(OPTFLAGS)
 CXXFLAGS+=$(OPTFLAGS)
 
 # Python
-PYTHON=python
+PYTHON=python3
 
 # Lua front-end
 LUA_CFLAGS=`pkg-config lua53 --cflags`

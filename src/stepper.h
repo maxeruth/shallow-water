@@ -45,6 +45,16 @@ typedef struct central2d_t {
     float dx, dy; // Cell width in x/y
     float cfl;    // Max allowed CFL number
 
+	int rank;     // MPI rank
+	int world_size; // MPI world size
+	int NX, NY;   // Number of processors in x/y
+	int x0, y0;   // Cell offset in x/y, (xi = x0 + i, yj = y0 + j)
+
+	// Locations of all neighbors
+	int top_neighbor, bottom_neighbor, left_neighbor, right_neighbor; 
+
+
+
     // Flux and speed functions
     flux_t flux;
     speed_t speed;

@@ -14,6 +14,28 @@
 #include <assert.h>
 #include <stdio.h>
 
+// The number of processors to be used in the x direction
+#ifndef NX_IN
+#define NX_IN = ((int) 2)
+#endif
+
+// The number of processors to be used in the y direction
+#ifndef NY_IN
+#define NY_IN = ((int) 2)
+#endif
+
+// The number of ghost cells
+#ifndef ng_IN
+#define ng_IN = ((int) 4)
+#endif
+
+
+// The number of time steps 
+#ifndef BLOCK_STEPS
+#define BLOCK_STEPS = ((int) 1)
+#endif
+
+
 //ldoc on
 /**
  * # Driver code
@@ -53,6 +75,10 @@ void solution_check(central2d_t* sim)
     h_sum *= cell_area;
     hu_sum *= cell_area;
     hv_sum *= cell_area;
+    
+    // Communicate? OR Only call this for node 0?
+    
+    
     printf("-\n  Volume: %g\n  Momentum: (%g, %g)\n  Range: [%g, %g]\n",
            h_sum, hu_sum, hv_sum, hmin, hmax);
     assert(hmin > 0);
@@ -70,12 +96,18 @@ void solution_check(central2d_t* sim)
 
 FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 {
-    FILE* fp = fopen(fname, "w");
-    if (fp) {
-        float xy[2] = {sim->nx/vskip, sim->ny/vskip};
-        fwrite(xy, sizeof(float), 2, fp);
-    }
-    return fp;
+	// Make sure only the zero node opens the file
+	if(rank == 0){
+		FILE* fp = fopen(fname, "w");
+		if (fp) {
+			float xy[2] = {sim->nx/vskip, sim->ny/vskip};
+			fwrite(xy, sizeof(float), 2, fp);
+		}
+		return fp;
+	}
+	else{
+		return 0;
+	}
 }
 
 void viz_close(FILE* fp)
@@ -118,12 +150,13 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
 
     int nx = sim->nx, ny = sim->ny, nfield = sim->nfield;
     float dx = sim->dx, dy = sim->dy;
+    float x0 = sim->x0, y0 = sim->y0; // Offsets for the given processor
     float* u = sim->u;
 
     for (int ix = 0; ix < nx; ++ix) {
-        float x = (ix + 0.5) * dx;
+        float x = (x0 + ix + 0.5) * dx; // x shifted by offset
         for (int iy = 0; iy < ny; ++iy) {
-            float y = (iy + 0.5) * dy;
+            float y = (y0 + iy + 0.5) * dy; // y shifted by offset
             lua_pushvalue(L, -1);
             lua_pushnumber(L, x);
             lua_pushnumber(L, y);
@@ -154,6 +187,7 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
 
 int run_sim(lua_State* L)
 {
+	
     int n = lua_gettop(L);
     if (n != 1 || !lua_istable(L, 1))
         luaL_error(L, "Argument must be a table");
@@ -179,13 +213,22 @@ int run_sim(lua_State* L)
     const char* fname = luaL_optstring(L, 10, "sim.out");
     lua_pop(L, 9);
 
-    central2d_t* sim = central2d_init(w,h, nx,ny,
+	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
+    central2d_t* sim = central2d_init(w,h,nx,ny,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
+    
+    // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
     printf("%g %g %d %d %g %d %g\n", w, h, nx, ny, cfl, frames, ftime);
     FILE* viz = viz_open(fname, sim, vskip);
-    solution_check(sim);
-    viz_frame(viz, sim, vskip);
+    
+    // This is the new block of code that updates the .out file and checks the solution
+    central2d_t* full_sim;
+    gather_info(sim,full_sim); // Fill in info of full_sim for the rank=0 node
+    if(sim->rank == 0){
+		solution_check(sim);
+		viz_frame(viz, sim, vskip);
+	}
 
     double tcompute = 0;
     for (int i = 0; i < frames; ++i) {
@@ -204,15 +247,24 @@ int run_sim(lua_State* L)
         int nstep = central2d_run(sim, ftime);
         double elapsed = 0;
 #endif
-        solution_check(sim);
+		
+		// Same as before the loop
+		gather_info(sim,full_sim); 
+		if(sim->rank == 0){
+			solution_check(sim);
+			viz_frame(viz, sim, vskip);
+		}
+		
         tcompute += elapsed;
         printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
-        viz_frame(viz, sim, vskip);
     }
     printf("Total compute time: %e\n", tcompute);
-
-    viz_close(viz);
+	
+	if(sim->rank == 0){
+		viz_close(viz); // We have only opened a file for the rank=0 node 
+	}
     central2d_free(sim);
+    central2d_free(full_sim); // Dunno if this has to be edited
     return 0;
 }
 
@@ -231,11 +283,17 @@ int run_sim(lua_State* L)
 
 int main(int argc, char** argv)
 {
+	
+	// Initialize MPI environment
+    MPI_Init(&argc, &argv);
+    
+	// Gotta include something to input
     if (argc < 2) {
         fprintf(stderr, "Usage: %s fname args\n", argv[0]);
         return -1;
     }
 
+	
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
     lua_register(L, "simulate", run_sim);
@@ -250,5 +308,7 @@ int main(int argc, char** argv)
     if (luaL_dofile(L, argv[1]))
         printf("%s\n", lua_tostring(L,-1));
     lua_close(L);
+    
+    MPI_Finalize();
     return 0;
 }

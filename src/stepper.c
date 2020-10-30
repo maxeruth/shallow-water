@@ -13,24 +13,59 @@
  * ### Structure allocation
  */
 
-central2d_t* central2d_init(float w, float h, int nx, int ny,
+central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
+							int ng, int NX, int NY
                             int nfield, flux_t flux, speed_t speed,
                             float cfl)
 {
-    // We extend to a four cell buffer to avoid BC comm on odd time steps
-    int ng = 4;
-
+	// For definitions of the values, see stepper.h
     central2d_t* sim = (central2d_t*) malloc(sizeof(central2d_t));
+    
+    // Get number of processors, make sure that NX*NY is the world size
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    if (NX*NY != world_size){
+        fprintf(stderr, "Number of processors in grid (%g) does not match world size (%g)\n", NX*NY, world_size);
+        return -1;
+    }
+    
+    sim->world_size = world_size;
+		
+    // Get rank of the process
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    sim->rank = rank;
+    
+    // Get the positions (rank = Y * NY + X)
+    int X,Y;
+    Y = rank/NY; X = rank%NY;
+    
+    // Get the offsets for loops
+    int x0,y0;
+    x0 = X * (nx_total/NX);
+    y0 = Y * (ny_total/NY);
+    
+    sim->x0 = x0;
+    sim->y0 = y0;
+    
+    // Get the total number of points "owned" in each direction
+    int nx,ny;
+    nx = min(nx_total/NX, nx_total-x0);
+    ny = min(ny_total/NY, ny_total-y0);
+    
     sim->nx = nx;
     sim->ny = ny;
+    
+    sim->NX = NX;
+    sim->NY = NY;
     sim->ng = ng;
     sim->nfield = nfield;
-    sim->dx = w/nx;
-    sim->dy = h/ny;
+    sim->dx = w/nx_total;
+    sim->dy = h/ny_total;
     sim->flux = flux;
     sim->speed = speed;
     sim->cfl = cfl;
-
+    
     int nx_all = nx + 2*ng;
     int ny_all = ny + 2*ng;
     int nc = nx_all * ny_all;
@@ -45,6 +80,70 @@ central2d_t* central2d_init(float w, float h, int nx, int ny,
 }
 
 
+void gather_info(sim,full_sim){
+	
+	// Copy sim into full_sim
+	
+	if(sim->world_size == 0){ // or is it 1? idk
+		return
+	}
+	
+	if(sim->rank == 0){
+		// Receive from all other nodes, synthesize into 
+	}
+	else{
+		// Send to node 0
+	}
+}
+
+
+central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
+{
+    //int BLOCK_X = 4;
+    //int BLOCK_Y = 4;
+    central2d_t* sim_sub = (central2d_t*) malloc(sizeof(central2d_t));
+    sim_sub->nx = sim->nx/BLOCK_X; // BLOCK_X number of blocks in x direction
+    sim_sub->ny = sim->ny/BLOCK_Y; // BLOCK_Y number of blocks in y direction
+    sim_sub->ng = sim->ng;
+    sim_sub->nfield = sim->nfield;
+    sim_sub->dx = sim->dx;
+    sim_sub->dy = sim->dy;
+    sim_sub->flux = sim->flux;
+    sim_sub->speed = sim->speed;
+    sim_sub->cfl = sim->cfl;
+
+    int N = sim->nx + 2*sim->ng; // size of original matrix plus ghost cells
+    int M = sim_sub->nx + 2*sim_sub->ng; // size of blocking matrix plus ghost cells
+    int nc_block = M * M;
+    int NN  = sim_sub->nfield * nc_block;
+    sim_sub->u  = (float*) malloc((4*NN + 6*M)* sizeof(float));
+
+    // coordinates of the blocking matrix in original matrix without ghost cells
+    int bx = num_domain/BLOCK_X;
+    int by = num_domain%BLOCK_X;
+    int i_bx = bx * sim_sub->nx;
+    int i_by = by * sim_sub->ny;
+
+    // copy params to subdomain for parallelization
+    for (int iy = 0; iy < M; ++iy){
+        for (int ix = 0; ix < M; ++ix){
+            sim_sub->u[iy*M+ix] = (sim->u + central2d_offset(sim, 0, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + NN] = (sim->u + central2d_offset(sim, 1, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + 2*NN] = (sim->u + central2d_offset(sim, 2, i_bx, i_by) - N)[iy*N + ix];
+            sim_sub->u[iy*M+ix + 3*NN] = (sim->u + central2d_offset(sim, 3, i_bx, i_by) - N)[iy*N + ix];
+        }
+    }
+
+    sim_sub->v  = sim_sub->u +   NN;
+    sim_sub->f  = sim_sub->u + 2*NN;
+    sim_sub->g  = sim_sub->u + 3*NN;
+    sim_sub->scratch = sim_sub->u + 4*NN;
+
+    return sim_sub;
+}
+
+
+
 void central2d_free(central2d_t* sim)
 {
     free(sim->u);
@@ -57,7 +156,7 @@ int central2d_offset(central2d_t* sim, int k, int ix, int iy)
     int nx = sim->nx, ny = sim->ny, ng = sim->ng;
     int nx_all = nx + 2*ng;
     int ny_all = ny + 2*ng;
-    return (k*ny_all+(ng+iy))*nx_all+(ng+ix);
+    return (k*ny_all + (ng+iy))*nx_all + (ng+ix);
 }
 
 
@@ -401,50 +500,7 @@ int central2d_xrun(float* restrict u, float* restrict v,
 }
 
 
-central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
-{
-    int BLOCK_X = 4;
-    int BLOCK_Y = 4;
-    central2d_t* sim_sub = (central2d_t*) malloc(sizeof(central2d_t));
-    sim_sub->nx = sim->nx/BLOCK_X; // BLOCK_X number of blocks in x direction
-    sim_sub->ny = sim->ny/BLOCK_Y; // BLOCK_Y number of blocks in y direction
-    sim_sub->ng = sim->ng;
-    sim_sub->nfield = sim->nfield;
-    sim_sub->dx = sim->dx;
-    sim_sub->dy = sim->dy;
-    sim_sub->flux = sim->flux;
-    sim_sub->speed = sim->speed;
-    sim_sub->cfl = sim->cfl;
 
-    int N = sim->nx + 2*sim->ng; // size of original matrix plus ghost cells
-    int M = sim_sub->nx + 2*sim_sub->ng; // size of blocking matrix plus ghost cells
-    int nc_block = M * M;
-    int NN  = sim_sub->nfield * nc_block;
-    sim_sub->u  = (float*) malloc((4*NN + 6*M)* sizeof(float));
-
-    // coordinates of the blocking matrix in original matrix without ghost cells
-    int bx = num_domain/BLOCK_X;
-    int by = num_domain%BLOCK_X;
-    int i_bx = bx * sim_sub->nx;
-    int i_by = by * sim_sub->ny;
-
-    // copy params to subdomain for parallelization
-    for (int iy = 0; iy < M; ++iy){
-        for (int ix = 0; ix < M; ++ix){
-            sim_sub->u[iy*M+ix] = (sim->u + central2d_offset(sim, 0, i_bx, i_by) - N)[iy*N + ix];
-            sim_sub->u[iy*M+ix + NN] = (sim->u + central2d_offset(sim, 1, i_bx, i_by) - N)[iy*N + ix];
-            sim_sub->u[iy*M+ix + 2*NN] = (sim->u + central2d_offset(sim, 2, i_bx, i_by) - N)[iy*N + ix];
-            sim_sub->u[iy*M+ix + 3*NN] = (sim->u + central2d_offset(sim, 3, i_bx, i_by) - N)[iy*N + ix];
-        }
-    }
-
-    sim_sub->v  = sim_sub->u +   NN;
-    sim_sub->f  = sim_sub->u + 2*NN;
-    sim_sub->g  = sim_sub->u + 3*NN;
-    sim_sub->scratch = sim_sub->u + 4*NN;
-
-    return sim_sub;
-}
 
 int central2d_run(central2d_t* sim, float tfinal)
 {
