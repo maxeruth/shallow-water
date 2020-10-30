@@ -446,8 +446,9 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
     return sim_sub;
 }
 
-int central2d_run(central2d_t* sim, float tfinal, int num_domain)
+int central2d_run(central2d_t* sim, float tfinal)
 {
+    int num_domain = 16;
     for (int i = 0; i < num_domain; ++i){
     central2d_t* sim_sub = copy_subdomain(sim, i); // blocking, copy the original domain into a few sub-domains
     
