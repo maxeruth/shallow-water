@@ -85,17 +85,23 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
 
 
 void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
+	printf("Entering copy_basic_info\n");
+	printf("sim->nfield %d\n",sim->nfield);
+	printf("full_sim->nfield %d\n",full_sim->nfield);
 	full_sim->nfield = sim->nfield;
+	printf("Ran the first line\n");
 	full_sim->nx = nx;
 	full_sim->ny = ny;
 	full_sim->ng = sim->ng;
 	full_sim->dx = sim->dx;
+	printf("Thirdish way\n");
 	full_sim->dy = sim->dy;
 	full_sim->cfl = sim->cfl;
 	full_sim->rank = sim->rank;
 	full_sim->world_size = sim->world_size; 
 	full_sim->NX = sim->NX;
 	full_sim->NY = sim->NY;
+	printf("Halfish way through the easy stuff\n");
 	full_sim->x0 = 0;
 	full_sim->y0 = 0;
 	full_sim->top_neighbor = 0;
@@ -106,7 +112,7 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 	full_sim->flux = sim->flux;
 	full_sim->speed = sim->speed;
 	
-	
+	printf("Copied basic stuff\n");	
 	
 	int nx_all = nx + 2*full_sim->ng;
     int ny_all = ny + 2*full_sim->ng;
