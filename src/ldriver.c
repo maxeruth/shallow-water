@@ -7,9 +7,9 @@
 #include <sys/time.h>
 #endif
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+#include "lua-5.4.1/src/lua.h"
+#include "lua-5.4.1/src/lauxlib.h"
+#include "lua-5.4.1/src/lualib.h"
 
 #include <assert.h>
 #include <stdio.h>
