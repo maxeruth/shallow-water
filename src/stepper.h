@@ -75,7 +75,8 @@ typedef struct central2d_t {
  * functions.
  *
  */
-central2d_t* central2d_init(float w, float h, int nx, int ny,
+central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
+							int ng, int NX, int NY
                             int nfield, flux_t flux, speed_t speed,
                             float cfl);
 void central2d_free(central2d_t* sim);

@@ -16,23 +16,23 @@
 
 // The number of processors to be used in the x direction
 #ifndef NX_IN
-#define NX_IN = ((int) 1)
+#define NX_IN ((int) 1)
 #endif
 
 // The number of processors to be used in the y direction
 #ifndef NY_IN
-#define NY_IN = ((int) 1)
+#define NY_IN ((int) 1)
 #endif
 
 // The number of ghost cells
 #ifndef ng_IN
-#define ng_IN = ((int) 4)
+#define ng_IN ((int) 4)
 #endif
 
 
 // The number of time steps 
 #ifndef BLOCK_STEPS
-#define BLOCK_STEPS = ((int) 1)
+#define BLOCK_STEPS ((int) 1)
 #endif
 
 
@@ -97,7 +97,7 @@ void solution_check(central2d_t* sim)
 FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 {
 	// Make sure only the zero node opens the file
-	if(rank == 0){
+	if(sim->rank == 0){
 		FILE* fp = fopen(fname, "w");
 		if (fp) {
 			float xy[2] = {sim->nx/vskip, sim->ny/vskip};
