@@ -233,6 +233,7 @@ int run_sim(lua_State* L)
 	}
 
     double tcompute = 0;
+    /*
     for (int i = 0; i < frames; ++i) {
 #ifdef _OPENMP
         double t0 = omp_get_wtime();
@@ -261,7 +262,7 @@ int run_sim(lua_State* L)
         printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
     printf("Total compute time: %e\n", tcompute);
-	
+    */	
 	if(sim->rank == 0){
 		viz_close(viz); // We have only opened a file for the rank=0 node 
 	}
