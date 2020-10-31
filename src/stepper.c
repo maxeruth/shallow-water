@@ -124,8 +124,8 @@ void copy_u(float* u, int source_nx, int source_ny,
     int ny_all = source_ny + 2*ng;
     int N = nx_all * ny_all;
 
-    for (int iy = 0; iy < M; ++iy){
-        for (int ix = 0; ix < M; ++ix){
+    for (int iy = 0; iy < ny; ++iy){
+        for (int ix = 0; ix < nx; ++ix){
             int iu = (ng+iy)*nx_all + (ng+ix);
             full_sim->u[central2d_offset(full_sim,0,source_x0 + ix,source_y0 + iy)] = u[iu];
             full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
