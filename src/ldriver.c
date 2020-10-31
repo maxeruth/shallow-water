@@ -215,7 +215,7 @@ int run_sim(lua_State* L)
     int frames   = luaL_optinteger(L, 11, 50);
     const char* fname = luaL_optstring(L, 12, "sim.out");
     lua_pop(L, 9);
-    printf("In run_sim, still b efore any edited functions\n");
+    // printf("In run_sim, still before any edited functions\n");
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
     central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
@@ -225,24 +225,33 @@ int run_sim(lua_State* L)
     // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
     printf("Filled sim with ICs\n");
+    
+    FILE* viz = viz_open(fname, sim, vskip);
+    printf("Opened file viz\n");
 
     printf("%g %g %d %d %g %d %g\n", w, h, nx_total, ny_total, cfl, frames, ftime);
-    FILE* viz = viz_open(fname, sim, vskip);
-    printf("Opened file viz\n"); 
+     
     // This is the new block of code that updates the .out file and checks the solution
     central2d_t* full_sim = malloc(sizeof(central2d_t));
     copy_basic_info(nx_total,ny_total,sim,full_sim);
-    printf("Ran copy_basic_info\n");    
+//    printf("Ran copy_basic_info\n");
 
-    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
-    if(sim->rank == 0){
-		solution_check(sim);
-		viz_frame(viz, sim, vskip);
-	}
+//    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
+//    if(sim->rank == 0){
+//        central2d_t* full_sim = malloc(sizeof(central2d_t));
+//        copy_basic_info(nx_total,ny_total,sim,full_sim);
+//        FILE* viz = viz_open(fname, sim, vskip);
+//        printf("Opened file viz\n");
+//		solution_check(full_sim);
+//        viz_frame(viz, full_sim, vskip);
+//	}
+    
+//    MPI_Barrier(MPI_COMM_WORLD);
 
     double tcompute = 0;
-    /*
+    
     for (int i = 0; i < frames; ++i) {
+        
 #ifdef _OPENMP
         double t0 = omp_get_wtime();
         int nstep = central2d_run(sim, ftime);
@@ -258,19 +267,18 @@ int run_sim(lua_State* L)
         int nstep = central2d_run(sim, ftime);
         double elapsed = 0;
 #endif
-		
 		// Same as before the loop
 		gather_sol(sim,full_sim); 
 		if(sim->rank == 0){
-			solution_check(sim);
-			viz_frame(viz, sim, vskip);
+			solution_check(full_sim);
+			viz_frame(viz, full_sim, vskip);
 		}
 		
         tcompute += elapsed;
         printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
     printf("Total compute time: %e\n", tcompute);
-    */	
+    	
 	if(sim->rank == 0){
 		viz_close(viz); // We have only opened a file for the rank=0 node 
 	}
