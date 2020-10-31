@@ -1,5 +1,5 @@
 # C compiler and flags
-CC=gcc
+CC=mpicc
 CFLAGS=-g
 
 # Optimization flags

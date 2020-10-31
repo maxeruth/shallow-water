@@ -1,5 +1,7 @@
 #include "stepper.h"
 
+#include <mpi.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -25,8 +27,8 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     if (NX*NY != world_size){
-        fprintf(stderr, "Number of processors in grid (%g) does not match world size (%g)\n", NX*NY, world_size);
-        return -1;
+        fprintf(stderr, "Number of processors in grid (%d) does not match world size (%d)\n", NX*NY, world_size);
+        exit(-1);
     }
     
     sim->world_size = world_size;
@@ -50,8 +52,10 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the total number of points "owned" in each direction
     int nx,ny;
-    nx = min(nx_total/NX, nx_total-x0);
-    ny = min(ny_total/NY, ny_total-y0);
+//    nx = min(nx_total/NX, nx_total-x0);
+//    ny = min(ny_total/NY, ny_total-y0);
+    nx = ( ( nx_total / NX ) < ( nx_total - x0 ) ) ? ( nx_total / NX ) : ( nx_total - x0 );
+    ny = ( ( ny_total / NY ) < ( ny_total - y0 ) ) ? ( ny_total / NY ) : ( ny_total - y0 );
     
     sim->nx = nx;
     sim->ny = ny;
@@ -162,8 +166,10 @@ void recv_full_u(int source, central2d_t* full_sim){
     y0 = Y * (full_sim->ny/NY);
     
     int nx,ny;
-    nx = min(full_sim->nx/NX, full_sim->nx-x0);
-    ny = min(full_sim->ny/NY, full_sim->ny-y0);
+//    nx = min(full_sim->nx/NX, full_sim->nx-x0);
+//    ny = min(full_sim->ny/NY, full_sim->ny-y0);
+    nx = ( ( full_sim->nx / NX ) < ( full_sim->nx - x0 ) ) ? ( full_sim->nx / NX ) : ( full_sim->nx - x0 );
+    ny = ( ( full_sim->ny / NY ) < ( full_sim->ny - y0 ) ) ? ( full_sim->ny / NY ) : ( full_sim->ny - y0 );
     
     int ng = full_sim->ng;
     int nx_all = nx + 2*ng;
@@ -187,7 +193,7 @@ void recv_full_u(int source, central2d_t* full_sim){
 void gather_sol(central2d_t* sim,central2d_t* full_sim){
 	if(sim->rank == 0){
 		// Copy sim into full_sim
-		copyu(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);
+		copy_u(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);
 		
 		for(int ii = 1; ii < sim->world_size; ++ii){
 			recv_full_u(ii,full_sim); // Receive from all other nodes, synthesize into 
