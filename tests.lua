@@ -1,13 +1,17 @@
 --
 -- Basic tests
 --
-nx = tonumber(args[2]) or 200
+nx = tonumber(args[2])
+NX_IN = tonumber(args[3])
+NY_IN = tonumber(args[4])
 vskip = math.floor(nx/200)
 
 pond = {
   init = function(x,y) return 1, 0, 0 end,
   out = "pond.out",
   nx = nx,
+  NX_IN = NX_IN,
+  NY_IN = NY_IN,
   vskip = vskip
 }
 
@@ -15,6 +19,8 @@ river = {
   init = function(x,y) return 1, 1, 0 end,
   out = "river.out",
   nx = nx,
+  NX_IN = NX_IN,
+  NY_IN = NY_IN,
   vskip = vskip
 }
 
@@ -28,6 +34,8 @@ dam = {
   end,
   out = "dam_break.out",
   nx = nx,
+  NX_IN = NX_IN,
+  NY_IN = NY_IN,
   vskip = vskip
 }
 
@@ -38,6 +46,8 @@ wave = {
   out = "wave.out",
   frames = 100,
   nx = nx,
+  NX_IN = NX_IN,
+  NY_IN = NY_IN,
   vskip = vskip
 }
 

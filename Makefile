@@ -1,5 +1,6 @@
 PLATFORM=graphite
 PROCESSES=1
+GSIZE=200
 XDIM=1
 YDIM=1
 include config/Makefile.in.$(PLATFORM)
@@ -16,7 +17,7 @@ src/lshallow:
 run: dam_break.gif
 
 big: src/lshallow
-	mpirun -np $(PROCESSES) src/lshallow tests.lua dam 1000
+	mpirun -np $(PROCESSES) src/lshallow tests.lua dam 1000 $(XDIM) $(YDIM)
 
 # ===
 # Generate visualizations (animated GIF or MP4)
@@ -37,10 +38,10 @@ wave.mp4: wave.out
 # Generate output files
 
 dam_break.out: src/lshallow
-	mpirun -np $(PROCESSES) src/lshallow tests.lua dam
+	mpirun -np $(PROCESSES) src/lshallow tests.lua dam $(GSIZE) $(XDIM) $(YDIM)
 
 wave.out: src/lshallow
-	mpirun -np $(PROCESSES) src/lshallow tests.lua wave
+	mpirun -np $(PROCESSES) src/lshallow tests.lua wave $(GSIZE) $(XDIM) $(YDIM)
 
 # ===
 # Generate documentation

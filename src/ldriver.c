@@ -11,18 +11,9 @@
 #include "lua-5.4.1/src/lauxlib.h"
 #include "lua-5.4.1/src/lualib.h"
 
+#include <mpi.h>
 #include <assert.h>
 #include <stdio.h>
-
-// The number of processors to be used in the x direction
-#ifndef NX_IN
-#define NX_IN ((int) 1)
-#endif
-
-// The number of processors to be used in the y direction
-#ifndef NY_IN
-#define NY_IN ((int) 1)
-#endif
 
 // The number of ghost cells
 #ifndef ng_IN
@@ -198,6 +189,8 @@ int run_sim(lua_State* L)
     lua_getfield(L, 1, "ftime");
     lua_getfield(L, 1, "nx");
     lua_getfield(L, 1, "ny");
+    lua_getfield(L, 1, "NX_IN");
+    lua_getfield(L, 1, "NY_IN");
     lua_getfield(L, 1, "vskip");
     lua_getfield(L, 1, "frames");
     lua_getfield(L, 1, "out");
@@ -208,9 +201,11 @@ int run_sim(lua_State* L)
     double ftime = luaL_optnumber(L, 5, 0.01);
     int nx_total = luaL_optinteger(L, 6, 200);
     int ny_total = luaL_optinteger(L, 7, nx_total);
-    int vskip    = luaL_optinteger(L, 8, 1);
-    int frames   = luaL_optinteger(L, 9, 50);
-    const char* fname = luaL_optstring(L, 10, "sim.out");
+    int NX_IN    = luaL_optinteger(L, 8, 1);
+    int NY_IN    = luaL_optinteger(L, 9, 1);
+    int vskip    = luaL_optinteger(L, 10, 1);
+    int frames   = luaL_optinteger(L, 11, 50);
+    const char* fname = luaL_optstring(L, 12, "sim.out");
     lua_pop(L, 9);
 
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
