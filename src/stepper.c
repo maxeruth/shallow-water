@@ -183,7 +183,7 @@ void recv_full_u(int source, central2d_t* full_sim){
 }
 
 
-void gather_sol(sim,full_sim){
+void gather_sol(central2d_t* sim,central2d_t* full_sim){
 	if(sim->rank == 0){
 		// Copy sim into full_sim
 		copyu(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);

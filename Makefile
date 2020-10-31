@@ -1,4 +1,4 @@
-PLATFORM=gcc
+PLATFORM=graphite
 include config/Makefile.in.$(PLATFORM)
 
 .PHONY: src/lshallow

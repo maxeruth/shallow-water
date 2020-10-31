@@ -16,12 +16,12 @@
 
 // The number of processors to be used in the x direction
 #ifndef NX_IN
-#define NX_IN = ((int) 2)
+#define NX_IN = ((int) 1)
 #endif
 
 // The number of processors to be used in the y direction
 #ifndef NY_IN
-#define NY_IN = ((int) 2)
+#define NY_IN = ((int) 1)
 #endif
 
 // The number of ghost cells

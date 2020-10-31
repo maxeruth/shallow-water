@@ -87,8 +87,8 @@ void central2d_free(central2d_t* sim);
  * printing.
  * 
  */
-void copy_basic_info(nx, ny, sim, full_sim); // Fill everything but u,v,f,g,scratch
-void gather_sol(sim,full_sim); // Fill u,v,f,g from all processors
+void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim); // Fill everything but u,v,f,g,scratch
+void gather_sol(central2d_t* sim,central2d_t* full_sim); // Fill u,v,f,g from all processors
 
 /**
  * For initialization and for reporting on the solution, it's helpful
