@@ -1,3 +1,5 @@
+#include <mpi.h>
+
 #include "stepper.h"
 #include "shallow2d.h"
 
