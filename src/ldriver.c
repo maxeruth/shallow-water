@@ -1,3 +1,5 @@
+#include <mpi.h>
+
 #include "stepper.h"
 #include "shallow2d.h"
 
@@ -14,6 +16,8 @@
 #include <mpi.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 
 // The number of ghost cells
 #ifndef ng_IN
@@ -87,9 +91,11 @@ void solution_check(central2d_t* sim)
 
 FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 {
+	printf("Opening file, rank: %d\n",sim->rank);
 	// Make sure only the zero node opens the file
 	if(sim->rank == 0){
 		FILE* fp = fopen(fname, "w");
+		printf("    Opened\n");
 		if (fp) {
 			float xy[2] = {sim->nx/vskip, sim->ny/vskip};
 			fwrite(xy, sizeof(float), 2, fp);
@@ -138,12 +144,14 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
     lua_getfield(L, 1, "init");
     if (lua_type(L, -1) != LUA_TFUNCTION)
         luaL_error(L, "Expected init to be a string");
-
+    
+    printf("Pulling properties of sim\n");
     int nx = sim->nx, ny = sim->ny, nfield = sim->nfield;
     float dx = sim->dx, dy = sim->dy;
-    float x0 = sim->x0, y0 = sim->y0; // Offsets for the given processor
+    int x0 = sim->x0, y0 = sim->y0; // Offsets for the given processor
     float* u = sim->u;
-
+    
+    printf("In lua_init_sim w/ x0=%d, y0=%d\n",x0,y0);
     for (int ix = 0; ix < nx; ++ix) {
         float x = (x0 + ix + 0.5) * dx; // x shifted by offset
         for (int iy = 0; iy < ny; ++iy) {
@@ -178,7 +186,7 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
 
 int run_sim(lua_State* L)
 {
-	
+    	
     int n = lua_gettop(L);
     if (n != 1 || !lua_istable(L, 1))
         luaL_error(L, "Argument must be a table");
@@ -207,20 +215,25 @@ int run_sim(lua_State* L)
     int frames   = luaL_optinteger(L, 11, 50);
     const char* fname = luaL_optstring(L, 12, "sim.out");
     lua_pop(L, 9);
-
+    printf("In run_sim, still b efore any edited functions\n");
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
     central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
     
+    printf("Successfully initialized sim\n");
+    
     // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
+    printf("Filled sim with ICs\n");
+
     printf("%g %g %d %d %g %d %g\n", w, h, nx_total, ny_total, cfl, frames, ftime);
     FILE* viz = viz_open(fname, sim, vskip);
-    
+    printf("Opened file viz\n"); 
     // This is the new block of code that updates the .out file and checks the solution
-    central2d_t* full_sim;
+    central2d_t* full_sim = malloc(sizeof(central2d_t));
     copy_basic_info(nx_total,ny_total,sim,full_sim);
-    
+    printf("Ran copy_basic_info\n");    
+
     gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
     if(sim->rank == 0){
 		solution_check(sim);
@@ -284,7 +297,8 @@ int main(int argc, char** argv)
 	
 	// Initialize MPI environment
     MPI_Init(&argc, &argv);
-    
+    printf("Entering main\n");
+
 	// Gotta include something to input
     if (argc < 2) {
         fprintf(stderr, "Usage: %s fname args\n", argv[0]);
