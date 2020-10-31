@@ -124,8 +124,8 @@ void copy_u(float* u, int source_nx, int source_ny,
     int ny_all = source_ny + 2*ng;
     int N = nx_all * ny_all;
 
-    for (int iy = 0; iy < ny; ++iy){
-        for (int ix = 0; ix < nx; ++ix){
+    for (int iy = 0; iy < source_ny; ++iy){
+        for (int ix = 0; ix < source_nx; ++ix){
             int iu = (ng+iy)*nx_all + (ng+ix);
             full_sim->u[central2d_offset(full_sim,0,source_x0 + ix,source_y0 + iy)] = u[iu];
             full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
@@ -607,6 +607,7 @@ int central2d_xrun(float* restrict u, float* restrict v,
 
 int central2d_run(central2d_t* sim, float tfinal)
 {
+    /*
     int num_domain = 16;
     for (int i = 0; i < num_domain; ++i){
     central2d_t* sim_sub = copy_subdomain(sim, i); // blocking, copy the original domain into a few sub-domains
@@ -616,11 +617,11 @@ int central2d_run(central2d_t* sim, float tfinal)
                    sim_sub->nx, sim_sub->ny, sim_sub->ng,
                    sim_sub->nfield, sim_sub->flux, sim_sub->speed,
                    tfinal, sim_sub->dx, sim_sub->dy, sim_sub->cfl);
-    }
+    }*/
     
-    // return central2d_xrun(sim->u, sim->v, sim->scratch,
-    //                       sim->f, sim->g,
-    //                       sim->nx, sim->ny, sim->ng,
-    //                       sim->nfield, sim->flux, sim->speed,
-    //                       tfinal, sim->dx, sim->dy, sim->cfl);
+    return central2d_xrun(sim->u, sim->v, sim->scratch,
+                           sim->f, sim->g,
+                           sim->nx, sim->ny, sim->ng,
+                           sim->nfield, sim->flux, sim->speed,
+                           tfinal, sim->dx, sim->dy, sim->cfl);
 }
