@@ -80,6 +80,16 @@ central2d_t* central2d_init(float w, float h, int nx, int ny,
                             float cfl);
 void central2d_free(central2d_t* sim);
 
+
+/**
+ * MAX: We need a couple other functions for central2d_t to create the
+ * 'full_sim', which contains the information from all processors for
+ * printing.
+ * 
+ */
+void copy_basic_info(nx, ny, sim, full_sim); // Fill everything but u,v,f,g,scratch
+void gather_sol(sim,full_sim); // Fill u,v,f,g from all processors
+
 /**
  * For initialization and for reporting on the solution, it's helpful
  * to expose how indexing is done.  We manage this with an offset

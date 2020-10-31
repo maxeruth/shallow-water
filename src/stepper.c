@@ -80,23 +80,125 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
 }
 
 
-void gather_info(sim,full_sim){
+void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
+	full_sim->nfield = sim->nfield;
+	full_sim->nx = nx;
+	full_sim->ny = ny;
+	full_sim->ng = sim->ng;
+	full_sim->dx = sim->dx;
+	full_sim->dy = sim->dy;
+	full_sim->cfl = sim->cfl;
+	full_sim->rank = sim->rank;
+	full_sim->world_size = sim->world_size; 
+	full_sim->NX = sim->NX;
+	full_sim->NY = sim->NY;
+	full_sim->x0 = 0;
+	full_sim->y0 = 0;
+	full_sim->top_neighbor = 0;
+	full_sim->bottom_neighbor = 0;
+	full_sim->left_neighbor = 0;
+	full_sim->right_neighbor = 0;
 	
-	// Copy sim into full_sim
+	full_sim->flux = sim->flux;
+	full_sim->speed = sim->speed;
 	
-	if(sim->world_size == 0){ // or is it 1? idk
-		return
-	}
 	
-	if(sim->rank == 0){
-		// Receive from all other nodes, synthesize into 
-	}
-	else{
-		// Send to node 0
-	}
+	
+	int nx_all = nx + 2*full_sim->ng;
+    int ny_all = ny + 2*full_sim->ng;
+    int nc = nx_all * ny_all;
+    int N  = full_sim->nfield * nc;
+	full_sim->u  = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
+	full_sim->v  = sim->u +   N;
+    full_sim->f  = sim->u + 2*N;
+    full_sim->g  = sim->u + 3*N;
+    full_sim->scratch = sim->u + 4*N;
+	
+}
+
+// Copy the data from the source into the full_sim
+void copy_u(double* u, int source_nx, int source_ny, 
+            int source_x0, int source_y0, central2d_t* full_sim){
+	int nx_all = source_nx + 2*ng;
+    int ny_all = source_ny + 2*ng;
+    int N = nx_all * ny_all;
+
+	for (int iy = 0; iy < M; ++iy){
+        for (int ix = 0; ix < M; ++ix){
+			int iu = (ng+iy)*nx_all + (ng+ix);
+			
+			full_sim->u[central2d_offset(full_sim,0,source_x0 + ix,source_y0 + iy)] = u[iu];
+			full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
+			full_sim->u[central2d_offset(full_sim,2,source_x0 + ix,source_y0 + iy)] = u[2*N + iu];
+			full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
+        }
+    }
+
+	
+	
 }
 
 
+// Send data from sim->u to a destination (probably the rank 0 node)
+void send_full_u(int destination, central2d_t* sim){
+	int nx_all = sim->nx + 2*sim->ng;
+    int ny_all = sim->ny + 2*sim->ng;
+    int nc = nx_all * ny_all;
+    int N  = sim->nfield * sim->nc;
+	MPI_Send(sim->u, 4*N + 6*nx_all, MPI_FLOAT, destination, 0, MPI_COMM_WORLD);
+}
+
+// Receive data from send_full_u. Assumes full_sim is the full simulation for writes and solution checking
+void recv_full_u(int source, central2d_t* full_sim){
+	// Calculate the amount of data that must be coming from source:
+	int X,Y;
+    Y = source/full_sim->NY; X = source%full_sim->NY;
+    
+    int x0,y0;
+    x0 = X * (full_sim->nx/full_sim->NX);
+    y0 = Y * (full_sim->ny/full_sim->NY);
+    
+    int nx,ny;
+    nx = min(full_sim->nx/full_sim->NX, full_sim->nx-x0);
+    ny = min(ny_total/NY, ny_total-y0);
+    
+    int nx_all = nx + 2*ng;
+    int ny_all = ny + 2*ng;
+    int nc = nx_all * ny_all;
+    int N  = nfield * nc;
+    
+    // Create a temporary place to receive all of the data
+    float* tmpu = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
+    
+    // Receive the data from the source node
+    MPI_Recv(tmpu, 4*N + 6*nx_all, MPI_FLOAT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+    // Copy the data into the full solution array
+    copy_u(tmpu, nx, ny, x0, y0, full_sim)
+    
+    free(tmpu)
+    
+    return sim;
+	
+}
+
+
+void gather_sol(sim,full_sim){
+	if(sim->rank == 0){
+		// Copy sim into full_sim
+		copyu(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);
+		
+		for(ii = 1, ii < sim->world_size, ++ii){
+			recv_full_u(ii,full_sim); // Receive from all other nodes, synthesize into 
+		}
+		
+	}
+	else{
+		send_full_u(0,sim); // Send to node 0	
+	}
+}
+
+/*
 central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
 {
     //int BLOCK_X = 4;
@@ -140,7 +242,7 @@ central2d_t* copy_subdomain(central2d_t* sim, int num_domain)
     sim_sub->scratch = sim_sub->u + 4*NN;
 
     return sim_sub;
-}
+} */
 
 
 

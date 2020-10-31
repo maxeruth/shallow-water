@@ -206,25 +206,27 @@ int run_sim(lua_State* L)
     double h     = luaL_optnumber(L, 3, w);
     double cfl   = luaL_optnumber(L, 4, 0.45);
     double ftime = luaL_optnumber(L, 5, 0.01);
-    int nx       = luaL_optinteger(L, 6, 200);
-    int ny       = luaL_optinteger(L, 7, nx);
+    int nx_total = luaL_optinteger(L, 6, 200);
+    int ny_total = luaL_optinteger(L, 7, nx_total);
     int vskip    = luaL_optinteger(L, 8, 1);
     int frames   = luaL_optinteger(L, 9, 50);
     const char* fname = luaL_optstring(L, 10, "sim.out");
     lua_pop(L, 9);
 
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
-    central2d_t* sim = central2d_init(w,h,nx,ny,ng_IN,NX_IN,NY_IN,
+    central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
     
     // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
-    printf("%g %g %d %d %g %d %g\n", w, h, nx, ny, cfl, frames, ftime);
+    printf("%g %g %d %d %g %d %g\n", w, h, nx_total, ny_total, cfl, frames, ftime);
     FILE* viz = viz_open(fname, sim, vskip);
     
     // This is the new block of code that updates the .out file and checks the solution
     central2d_t* full_sim;
-    gather_info(sim,full_sim); // Fill in info of full_sim for the rank=0 node
+    copy_basic_info(nx_total,ny_total,sim,full_sim);
+    
+    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
     if(sim->rank == 0){
 		solution_check(sim);
 		viz_frame(viz, sim, vskip);
@@ -249,7 +251,7 @@ int run_sim(lua_State* L)
 #endif
 		
 		// Same as before the loop
-		gather_info(sim,full_sim); 
+		gather_sol(sim,full_sim); 
 		if(sim->rank == 0){
 			solution_check(sim);
 			viz_frame(viz, sim, vskip);
