@@ -83,8 +83,6 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     int top_neighbor, bottom_neighbor, left_neighbor, right_neighbor;
     
-    iy*nx + ix;
-    
     sim->top_neighbor = ((Y+1)%NY)*NX + X;
     sim->bottom_neighbor = ((Y-1)%NY)*NX + X;
     sim->left_neighbor = Y*NX + (X-1)%NX;
