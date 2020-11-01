@@ -51,10 +51,8 @@ typedef struct central2d_t {
 	int x0, y0;   // Cell offset in x/y, (xi = x0 + i, yj = y0 + j)
 
 	// Locations of all neighbors
-	int top_neighbor, bottom_neighbor, left_neighbor, right_neighbor; 
-
-
-
+	int neighbors[4]; // the four neighbor rank: left, right, top, bottom
+    
     // Flux and speed functions
     flux_t flux;
     speed_t speed;
