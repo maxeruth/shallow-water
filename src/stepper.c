@@ -145,6 +145,7 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 // Copy the data from the source into the full_sim
 void copy_u(float* u, int source_nx, int source_ny, 
             int source_x0, int source_y0, central2d_t* full_sim){
+	printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d",source_nx,source_ny,source_x0,source_y0);
     int ng = full_sim->ng;
     int nx_all = source_nx + 2*ng;
     int ny_all = source_ny + 2*ng;
@@ -157,6 +158,7 @@ void copy_u(float* u, int source_nx, int source_ny,
             full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
             full_sim->u[central2d_offset(full_sim,2,source_x0 + ix,source_y0 + iy)] = u[2*N + iu];
             full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
+            //printf("copy_u: x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
         }
     }
 

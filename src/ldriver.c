@@ -163,7 +163,7 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
             for (int k = 0; k < nfield; ++k)
                 u[central2d_offset(sim,k,ix,iy)] = lua_tonumber(L, k-nfield);
             lua_pop(L, nfield);
-            printf("rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
+            printf("lua_init_sim: rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
         }
     }
 
@@ -237,20 +237,16 @@ int run_sim(lua_State* L)
     copy_basic_info(nx_total,ny_total,sim,full_sim);
 //    printf("Ran copy_basic_info\n");
 
-//    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
-//    if(sim->rank == 0){
-//        central2d_t* full_sim = malloc(sizeof(central2d_t));
-//        copy_basic_info(nx_total,ny_total,sim,full_sim);
-//        FILE* viz = viz_open(fname, sim, vskip);
-//        printf("Opened file viz\n");
-//		solution_check(full_sim);
-//        viz_frame(viz, full_sim, vskip);
-//	}
+    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
+    if(sim->rank == 0){
+		solution_check(full_sim);
+        viz_frame(viz, full_sim, vskip);
+	}
     
 //    MPI_Barrier(MPI_COMM_WORLD);
 
     double tcompute = 0;
-    
+/*    
     for (int i = 0; i < frames; ++i) {
         
 #ifdef _OPENMP
@@ -276,7 +272,7 @@ int run_sim(lua_State* L)
             tcompute += elapsed;
             printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
 		}
-		
+*/		
 //        tcompute += elapsed;
 //        printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
