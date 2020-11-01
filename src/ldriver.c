@@ -163,6 +163,7 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
             for (int k = 0; k < nfield; ++k)
                 u[central2d_offset(sim,k,ix,iy)] = lua_tonumber(L, k-nfield);
             lua_pop(L, nfield);
+            printf("rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
         }
     }
 

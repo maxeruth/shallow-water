@@ -88,19 +88,19 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->left_neighbor = Y*NX + (X+NX-1)%NX;
     sim->right_neighbor = Y*NX + (X+NX+1)%NX;
 
-	printf("sim set up\n"
+	printf("\nsim set up\n"
 	       "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
 	       "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
 	       "rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
 	       "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
-	       "rank = %d, left_neighbor = %d, right_neighbor = %d\n",
+	       "rank = %d, left_neighbor = %d, right_neighbor = %d\n\n",
 	       sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
 	       sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
 	       sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
 	       sim->rank,sim->bottom_neighbor,sim->top_neighbor,
 	       sim->rank,sim->left_neighbor,sim->right_neighbor);
 	
-	printf("Just to make sure: rank - Y*NX+X = %d\n",rank - Y*NX+X);
+	// printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
 	
     return sim;
 }
