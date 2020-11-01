@@ -1,8 +1,8 @@
 PLATFORM=graphite
-PROCESSES=1
+PROCESSES=4
 GSIZE=200
-XDIM=1
-YDIM=1
+XDIM=2
+YDIM=2
 include config/Makefile.in.$(PLATFORM)
 
 .PHONY: src/lshallow
