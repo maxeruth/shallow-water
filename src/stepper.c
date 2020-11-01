@@ -80,11 +80,11 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->g  = sim->u + 3*N;
     sim->scratch = sim->u + 4*N;
 
-	printf("sim set up\n nfield = %d, nx = %d, ny = %d, ng = %d, "
-	       "dx = %g, dy = %g, cfl = %g, rank = %d, world_size = %d, "
-	       "NX = %d, NY = %d, x0 = %d, y0 = %d, top_neighbor = %d, "
-	       "bottom_neighbor = %d, left_neighbor = %d, right_neighbor = %d",
-	       sim->nx,sim->ny,sim->ng,sim->dx,sim->dy,sim->cfl,sim->rank,
+	printf("sim set up\n nfield = %d, nx = %d, ny = %d, ng = %d,\n"
+	       "dx = %g, dy = %g, cfl = %g, rank = %d, world_size = %d,\n"
+	       "NX = %d, NY = %d, x0 = %d, y0 = %d, top_neighbor = %d,\n"
+	       "bottom_neighbor = %d, left_neighbor = %d, right_neighbor = %d\n",
+	       sim->nfield,sim->nx,sim->ny,sim->ng,sim->dx,sim->dy,sim->cfl,sim->rank,
 	       sim->world_size,sim->NX,sim->NY,sim->x0,sim->y0,
 	       sim->top_neighbor,sim->bottom_neighbor,sim->left_neighbor,
 	       sim->right_neighbor);
