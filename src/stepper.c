@@ -88,14 +88,17 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->left_neighbor = Y*NX + (X-1)%NX;
     sim->right_neighbor = Y*NX + (X+1)%NX;
 
-	printf("sim set up\n nfield = %d, nx = %d, ny = %d, ng = %d,\n"
-	       "dx = %g, dy = %g, cfl = %g, rank = %d, world_size = %d,\n"
-	       "NX = %d, NY = %d, x0 = %d, y0 = %d, top_neighbor = %d,\n"
-	       "bottom_neighbor = %d, left_neighbor = %d, right_neighbor = %d\n",
-	       sim->nfield,sim->nx,sim->ny,sim->ng,sim->dx,sim->dy,sim->cfl,sim->rank,
-	       sim->world_size,sim->NX,sim->NY,sim->x0,sim->y0,
-	       sim->top_neighbor,sim->bottom_neighbor,sim->left_neighbor,
-	       sim->right_neighbor);
+	printf("sim set up\n"
+	       "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
+	       "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
+	       "rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
+	       "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
+	       "rank = %d, left_neighbor = %d, right_neighbor = %d\n",
+	       sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
+	       sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
+	       sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
+	       sim->rank,sim->bottom_neighbor,sim->top_neighbor,
+	       sim->rank,sim->left_neighbor,sim->right_neighbor);
 	
 	
     return sim;
