@@ -221,6 +221,7 @@ int run_sim(lua_State* L)
     lua_pop(L, 9);
     // printf("In run_sim, still before any edited functions\n");
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
+    // printf("ng_IN: %d", ng_IN);
     central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
     
@@ -228,7 +229,7 @@ int run_sim(lua_State* L)
     
     // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
-    printf("r%d Filled sim with ICs\n",sim->rank);
+    //printf("r%d Filled sim with ICs\n",sim->rank);
     
     
     //printf("Opened file viz\n");

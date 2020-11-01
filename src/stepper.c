@@ -40,7 +40,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the positions (rank = Y * NY + X)
     int X,Y;
-    Y = rank/NX; X = rank%NX;
+    Y = rank/NY; X = rank%NY;
     
     // Get the offsets for loops
     int x0,y0;
@@ -52,10 +52,8 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the total number of points "owned" in each direction
     int nx,ny;
-//    nx = min(nx_total/NX, nx_total-x0);
-//    ny = min(ny_total/NY, ny_total-y0);
-    nx = ( ( nx_total / NX ) < ( nx_total - x0 ) ) ? ( nx_total / NX ) : ( nx_total - x0 );
-    ny = ( ( ny_total / NY ) < ( ny_total - y0 ) ) ? ( ny_total / NY ) : ( ny_total - y0 );
+    nx = ((nx_total/NX) < (nx_total-x0)) ? (nx_total/NX) : (nx_total-x0);
+    ny = ((ny_total/NY) < (ny_total-y0)) ? (ny_total/NY) : (ny_total-y0);
     
     sim->nx = nx;
     sim->ny = ny;
@@ -80,26 +78,23 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->g  = sim->u + 3*N;
     sim->scratch = sim->u + 4*N;
     
-    
-    int top_neighbor, bottom_neighbor, left_neighbor, right_neighbor;
-    
-    sim->top_neighbor = ((Y+1)%NY)*NX + X;
-    sim->bottom_neighbor = ((Y+NY-1)%NY)*NX + X;
-    sim->left_neighbor = Y*NX + (X+NX-1)%NX;
-    sim->right_neighbor = Y*NX + (X+NX+1)%NX;
-/*
+    sim->neighbors[0] = Y*NX + (X+NX-1)%NX;        // left
+    sim->neighbors[1] = Y*NX + (X+NX+1)%NX;        // right
+    sim->neighbors[2] = ((Y+1)%NY)*NX + X;         // top
+    sim->neighbors[3] = ((Y+NY-1)%NY)*NX + X;      // bottom
+
 	printf("\nsim set up\n"
-	       "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
-	       "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
-	       "rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
+	       //"rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
+	       //"rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
+	       //"rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
 	       "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
 	       "rank = %d, left_neighbor = %d, right_neighbor = %d\n\n",
-	       sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
-	       sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
-	       sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
-	       sim->rank,sim->bottom_neighbor,sim->top_neighbor,
-	       sim->rank,sim->left_neighbor,sim->right_neighbor);
-*/	
+	       //sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
+	       //sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
+	       //sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
+	       sim->rank,sim->neighbors[3],sim->neighbors[2],
+	       sim->rank,sim->neighbors[0],sim->neighbors[1]);
+	
 	// printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
 	
     return sim;
@@ -120,15 +115,12 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 	full_sim->NY = sim->NY;
 	full_sim->x0 = 0;
 	full_sim->y0 = 0;
-	full_sim->top_neighbor = 0;
-	full_sim->bottom_neighbor = 0;
-	full_sim->left_neighbor = 0;
-	full_sim->right_neighbor = 0;
+    for (int i = 0; i < 4; ++i){
+        full_sim->neighbors[i] = 0;
+    }
 	
 	full_sim->flux = sim->flux;
 	full_sim->speed = sim->speed;
-	
-	
 	
 	int nx_all = nx + 2*full_sim->ng;
     int ny_all = ny + 2*full_sim->ng;
@@ -160,12 +152,9 @@ void copy_u(float* u, int source_nx, int source_ny,
             full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
             /*printf("x0-%d y0-%d snx-%d, sny-%d copy_u: ix = %d, iy = %d, iu = %d, iu_full = %d u = %g\n",
                    source_x0,source_y0,source_nx,source_ny,ix,iy,iu,central2d_offset(full_sim,0,source_x0+ix,source_y0+iy), 
-                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);/**/
+                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);*/
         }
     }
-
-	
-	
 }
 
 
@@ -193,8 +182,6 @@ void recv_full_u(int source, central2d_t* full_sim){
     y0 = Y * (full_sim->ny/NY);
     
     int nx,ny;
-//    nx = min(full_sim->nx/NX, full_sim->nx-x0);
-//    ny = min(full_sim->ny/NY, full_sim->ny-y0);
     nx = ( ( full_sim->nx / NX ) < ( full_sim->nx - x0 ) ) ? ( full_sim->nx / NX ) : ( full_sim->nx - x0 );
     ny = ( ( full_sim->ny / NY ) < ( full_sim->ny - y0 ) ) ? ( full_sim->ny / NY ) : ( full_sim->ny - y0 );
     
@@ -218,7 +205,7 @@ void recv_full_u(int source, central2d_t* full_sim){
 }
 
 
-void gather_sol(central2d_t* sim,central2d_t* full_sim){
+void gather_sol(central2d_t* sim, central2d_t* full_sim){
 	printf("r%d Entering gather_sol\n",sim->rank);
 	if(sim->rank == 0){
 		// Copy sim into full_sim
@@ -334,7 +321,7 @@ void central2d_periodic(float* restrict u,
     int l = nx,   lg = 0;
     int r = ng,   rg = nx+ng;
     int b = ny*s, bg = 0;
-    int t = ng*s, tg = (nx+ng)*s;
+    int t = ng*s, tg = (ny+ng)*s;
 
     // Copy data into ghost cells on each side
     for (int k = 0; k < nfield; ++k) {
@@ -343,6 +330,56 @@ void central2d_periodic(float* restrict u,
         copy_subgrid(uk+rg, uk+r, ng, ny+2*ng, s);
         copy_subgrid(uk+tg, uk+t, nx+2*ng, ng, s);
         copy_subgrid(uk+bg, uk+b, nx+2*ng, ng, s);
+    }
+}
+
+void central2d_periodic_send(float* restrict u,
+                             int nx, int ny, int ng, int nfield,
+                             int rank, int neighbors[4])
+{
+    int nx_all = nx + 2*ng;
+    int ny_all = ny + 2*ng;
+    int nc = nx_all * ny_all;
+    int N  = nfield * nc;
+    
+    for (int i = 0; i < 4; ++i){
+        printf("Sending u from %d to %d\n",rank, neighbors[i]);
+        MPI_Send(u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[i], i, MPI_COMM_WORLD);
+    }
+}
+
+void central2d_periodic_recv(float* restrict u,
+                             int nx, int ny, int ng, int nfield,
+                             int rank, int neighbors[4])
+{
+    // Stride and number per field
+    int s = nx + 2*ng;
+    int field_stride = (ny+2*ng)*s;
+    int N = nfield * field_stride;
+
+    // Offsets of left, right, top, and bottom data blocks and ghost blocks
+    int block_offset[4] = {nx, ng, ng*s, ny*s};
+    int gblock_offset[4] = {0, nx+ng, (ny+ng)*s, 0};
+    int nxk[4] = {ng, ng, nx+2*ng, nx+2*ng};
+    int nyk[4] = {ny+2*ng, ny+2*ng, ng, ng};
+    
+    for (int i = 0; i < 4; i++){
+    
+    // Create a temporary place to receive all of the data
+    float* tmpu = (float*) malloc((4*N + 6*s)* sizeof(float));
+    
+    // Receive the data from the source node
+    printf("Receiving from %d to %d\n",neighbors[i], rank);
+    MPI_Recv(tmpu, 4*N + 6*s, MPI_FLOAT, neighbors[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    
+    // copy data from recv'd data to ghost blocks
+    for (int k = 0; k < nfield; ++k) {
+        float* uk = u + k*field_stride;
+        float* recv_uk = tmpu + k*field_stride;
+        copy_subgrid(uk+gblock_offset[i], recv_uk+block_offset[i], nxk[i], nyk[i], s);
+        free(recv_uk);
+    }
+    free(tmpu);
     }
 }
 
@@ -601,7 +638,8 @@ int central2d_xrun(float* restrict u, float* restrict v,
                    float* restrict g,
                    int nx, int ny, int ng,
                    int nfield, flux_t flux, speed_t speed,
-                   float tfinal, float dx, float dy, float cfl)
+                   float tfinal, float dx, float dy, float cfl,
+                   int rank, int neighbors[4])
 {
     int nstep = 0;
     int nx_all = nx + 2*ng;
@@ -610,7 +648,13 @@ int central2d_xrun(float* restrict u, float* restrict v,
     float t = 0;
     while (!done) {
         float cxy[2] = {1.0e-15f, 1.0e-15f};
-        central2d_periodic(u, nx, ny, ng, nfield);
+        // change central2d_periodic into data sharing from left, right, top, bottom processors
+        // central2d_periodic(u, nx, ny, ng, nfield);
+        printf("Data sharing start...");
+        central2d_periodic_send(u, nx, ny, ng, nfield, rank, neighbors);
+        central2d_periodic_recv(u, nx, ny, ng, nfield, rank, neighbors);
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Data sharing received...");
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
         float dt = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
         if (t + 2*dt >= tfinal) {
@@ -627,12 +671,6 @@ int central2d_xrun(float* restrict u, float* restrict v,
                        dt, dx, dy);
         t += 2*dt;
         nstep += 2;
-
-        // make communication between different cores
-
-
-
-
     }
     return nstep;
 }
@@ -655,8 +693,9 @@ int central2d_run(central2d_t* sim, float tfinal)
     }*/
     
     return central2d_xrun(sim->u, sim->v, sim->scratch,
-                           sim->f, sim->g,
-                           sim->nx, sim->ny, sim->ng,
-                           sim->nfield, sim->flux, sim->speed,
-                           tfinal, sim->dx, sim->dy, sim->cfl);
+                          sim->f, sim->g,
+                          sim->nx, sim->ny, sim->ng,
+                          sim->nfield, sim->flux, sim->speed,
+                          tfinal, sim->dx, sim->dy, sim->cfl,
+                          sim->rank, sim->neighbors);
 }
