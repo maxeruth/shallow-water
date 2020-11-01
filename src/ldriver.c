@@ -230,7 +230,7 @@ int run_sim(lua_State* L)
     lua_init_sim(L,sim);
     printf("r%d Filled sim with ICs\n",sim->rank);
     
-    FILE* viz = viz_open(fname, sim, vskip);
+    
     //printf("Opened file viz\n");
 
     printf("r%d %g %g %d %d %g %d %g\n", sim->rank, w, h, nx_total, ny_total, cfl, frames, ftime);
@@ -239,7 +239,8 @@ int run_sim(lua_State* L)
     central2d_t* full_sim = malloc(sizeof(central2d_t));
     copy_basic_info(nx_total,ny_total,sim,full_sim);
 //    printf("Ran copy_basic_info\n");
-
+	FILE* viz = viz_open(fname, full_sim, vskip);
+	
     gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
     if(sim->rank == 0){
 		solution_check(full_sim);
