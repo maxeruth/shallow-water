@@ -100,6 +100,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
 	       sim->rank,sim->bottom_neighbor,sim->top_neighbor,
 	       sim->rank,sim->left_neighbor,sim->right_neighbor);
 	
+	printf("Just to make sure: rank - Y*NX+X = %d",Y*NX+X);
 	
     return sim;
 }
