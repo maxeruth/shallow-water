@@ -4,7 +4,8 @@
 nx = tonumber(args[2])
 NX_IN = tonumber(args[3])
 NY_IN = tonumber(args[4])
-vskip = math.floor(nx/200)
+-- vskip = math.floor(nx/200)
+vskip = 1
 
 pond = {
   init = function(x,y) return 1, 0, 0 end,

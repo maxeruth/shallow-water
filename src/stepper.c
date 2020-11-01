@@ -87,7 +87,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->bottom_neighbor = ((Y+NY-1)%NY)*NX + X;
     sim->left_neighbor = Y*NX + (X+NX-1)%NX;
     sim->right_neighbor = Y*NX + (X+NX+1)%NX;
-
+/*
 	printf("\nsim set up\n"
 	       "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
 	       "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
@@ -99,7 +99,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
 	       sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
 	       sim->rank,sim->bottom_neighbor,sim->top_neighbor,
 	       sim->rank,sim->left_neighbor,sim->right_neighbor);
-	
+*/	
 	// printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
 	
     return sim;
@@ -145,7 +145,7 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 // Copy the data from the source into the full_sim
 void copy_u(float* u, int source_nx, int source_ny, 
             int source_x0, int source_y0, central2d_t* full_sim){
-	printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d",source_nx,source_ny,source_x0,source_y0);
+    printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d\n",source_nx,source_ny,source_x0,source_y0);
     int ng = full_sim->ng;
     int nx_all = source_nx + 2*ng;
     int ny_all = source_ny + 2*ng;
@@ -158,7 +158,9 @@ void copy_u(float* u, int source_nx, int source_ny,
             full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
             full_sim->u[central2d_offset(full_sim,2,source_x0 + ix,source_y0 + iy)] = u[2*N + iu];
             full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
-            //printf("copy_u: x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
+            printf("x0-%d y0-%d snx-%d, sny-%d copy_u: ix = %d, iy = %d, iu = %d, iu_full = %d u = %g\n",
+                   source_x0,source_y0,source_nx,source_ny,ix,iy,iu,central2d_offset(full_sim,0,source_x0+ix,source_y0+iy), 
+                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);
         }
     }
 
@@ -169,11 +171,12 @@ void copy_u(float* u, int source_nx, int source_ny,
 
 // Send data from sim->u to a destination (probably the rank 0 node)
 void send_full_u(int destination, central2d_t* sim){
-	int nx_all = sim->nx + 2*sim->ng;
+    int nx_all = sim->nx + 2*sim->ng;
     int ny_all = sim->ny + 2*sim->ng;
     int nc = nx_all * ny_all;
     int N  = sim->nfield * nc;
-	MPI_Send(sim->u, 4*N + 6*nx_all, MPI_FLOAT, destination, 0, MPI_COMM_WORLD);
+    printf("Sending u from %d to %d\n",sim->rank,destination);
+    MPI_Send(sim->u, 4*N + 6*nx_all, MPI_FLOAT, destination, 0, MPI_COMM_WORLD);
 }
 
 // Receive data from send_full_u. Assumes full_sim is the full simulation for writes and solution checking
@@ -205,6 +208,7 @@ void recv_full_u(int source, central2d_t* full_sim){
     float* tmpu = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
     
     // Receive the data from the source node
+    printf("Receiving from %d to %d\n",source,full_sim->rank);
     MPI_Recv(tmpu, 4*N + 6*nx_all, MPI_FLOAT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         
     // Copy the data into the full solution array
@@ -215,6 +219,7 @@ void recv_full_u(int source, central2d_t* full_sim){
 
 
 void gather_sol(central2d_t* sim,central2d_t* full_sim){
+	printf("r%d Entering gather_sol\n",sim->rank);
 	if(sim->rank == 0){
 		// Copy sim into full_sim
 		copy_u(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);

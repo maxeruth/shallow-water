@@ -1,6 +1,6 @@
 PLATFORM=graphite
 PROCESSES=4
-GSIZE=200
+GSIZE=4
 XDIM=2
 YDIM=2
 include config/Makefile.in.$(PLATFORM)

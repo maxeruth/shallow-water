@@ -95,7 +95,7 @@ FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 	// Make sure only the zero node opens the file
 	if(sim->rank == 0){
 		FILE* fp = fopen(fname, "w");
-		printf("    Opened\n");
+		printf("r%d Opened, vskip = %d\n",sim->rank,vskip);
 		if (fp) {
 			float xy[2] = {sim->nx/vskip, sim->ny/vskip};
 			fwrite(xy, sizeof(float), 2, fp);
@@ -116,10 +116,13 @@ void viz_frame(FILE* fp, central2d_t* sim, int vskip)
 {
     if (!fp)
         return;
-    for (int iy = 0; iy < sim->ny; iy += vskip)
-        for (int ix = 0; ix < sim->nx; ix += vskip)
+    for (int iy = 0; iy < sim->ny; iy += vskip){
+        for (int ix = 0; ix < sim->nx; ix += vskip){
+	    printf("viz_frame: ix-%d iy-%d iu-%d u = %g\n", ix, iy, central2d_offset(sim,0,ix,iy), sim->u[central2d_offset(sim,0,ix,iy)]);	
             fwrite(sim->u + central2d_offset(sim,0,ix,iy),
                    sizeof(float), 1, fp);
+        }
+    }
 }
 
 /**
@@ -145,13 +148,13 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
     if (lua_type(L, -1) != LUA_TFUNCTION)
         luaL_error(L, "Expected init to be a string");
     
-    printf("Pulling properties of sim\n");
+    //printf("Pulling properties of sim\n");
     int nx = sim->nx, ny = sim->ny, nfield = sim->nfield;
     float dx = sim->dx, dy = sim->dy;
     int x0 = sim->x0, y0 = sim->y0; // Offsets for the given processor
     float* u = sim->u;
     
-    printf("In lua_init_sim w/ x0=%d, y0=%d\n",x0,y0);
+    //printf("In lua_init_sim w/ x0=%d, y0=%d\n",x0,y0);
     for (int ix = 0; ix < nx; ++ix) {
         float x = (x0 + ix + 0.5) * dx; // x shifted by offset
         for (int iy = 0; iy < ny; ++iy) {
@@ -163,7 +166,7 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
             for (int k = 0; k < nfield; ++k)
                 u[central2d_offset(sim,k,ix,iy)] = lua_tonumber(L, k-nfield);
             lua_pop(L, nfield);
-            printf("lua_init_sim: rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
+            //printf("lua_init_sim: rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
         }
     }
 
@@ -221,16 +224,16 @@ int run_sim(lua_State* L)
     central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
     
-    printf("Successfully initialized sim\n");
+    //printf("Successfully initialized sim\n");
     
     // Populate the simulation struct with initial conditions
     lua_init_sim(L,sim);
-    printf("Filled sim with ICs\n");
+    printf("r%d Filled sim with ICs\n",sim->rank);
     
     FILE* viz = viz_open(fname, sim, vskip);
-    printf("Opened file viz\n");
+    //printf("Opened file viz\n");
 
-    printf("%g %g %d %d %g %d %g\n", w, h, nx_total, ny_total, cfl, frames, ftime);
+    printf("r%d %g %g %d %d %g %d %g\n", sim->rank, w, h, nx_total, ny_total, cfl, frames, ftime);
      
     // This is the new block of code that updates the .out file and checks the solution
     central2d_t* full_sim = malloc(sizeof(central2d_t));
@@ -305,7 +308,7 @@ int main(int argc, char** argv)
 	
 	// Initialize MPI environment
     MPI_Init(&argc, &argv);
-    printf("Entering main\n");
+    //printf("Entering main\n");
 
 	// Gotta include something to input
     if (argc < 2) {
