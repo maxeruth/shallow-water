@@ -40,7 +40,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the positions (rank = Y * NY + X)
     int X,Y;
-    Y = rank/NY; X = rank%NY;
+    Y = rank/NX; X = rank%NX;
     
     // Get the offsets for loops
     int x0,y0;
@@ -79,6 +79,16 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->f  = sim->u + 2*N;
     sim->g  = sim->u + 3*N;
     sim->scratch = sim->u + 4*N;
+    
+    
+    int top_neighbor, bottom_neighbor, left_neighbor, right_neighbor;
+    
+    iy*nx + ix;
+    
+    sim->top_neighbor = ((Y+1)%NY)*NX + X;
+    sim->bottom_neighbor = ((Y-1)%NY)*NX + X;
+    sim->left_neighbor = Y*NX + (X-1)%NX;
+    sim->right_neighbor = Y*NX + (X+1)%NX;
 
 	printf("sim set up\n nfield = %d, nx = %d, ny = %d, ng = %d,\n"
 	       "dx = %g, dy = %g, cfl = %g, rank = %d, world_size = %d,\n"
@@ -95,23 +105,17 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
 
 
 void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
-	printf("Entering copy_basic_info\n");
-	printf("sim->nfield %d\n",sim->nfield);
-	printf("full_sim->nfield %d\n",full_sim->nfield);
 	full_sim->nfield = sim->nfield;
-	printf("Ran the first line\n");
 	full_sim->nx = nx;
 	full_sim->ny = ny;
 	full_sim->ng = sim->ng;
 	full_sim->dx = sim->dx;
-	printf("Thirdish way\n");
 	full_sim->dy = sim->dy;
 	full_sim->cfl = sim->cfl;
 	full_sim->rank = sim->rank;
 	full_sim->world_size = sim->world_size; 
 	full_sim->NX = sim->NX;
 	full_sim->NY = sim->NY;
-	printf("Halfish way through the easy stuff\n");
 	full_sim->x0 = 0;
 	full_sim->y0 = 0;
 	full_sim->top_neighbor = 0;
@@ -122,7 +126,7 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 	full_sim->flux = sim->flux;
 	full_sim->speed = sim->speed;
 	
-	printf("Copied basic stuff\n");	
+	
 	
 	int nx_all = nx + 2*full_sim->ng;
     int ny_all = ny + 2*full_sim->ng;
