@@ -272,12 +272,12 @@ int run_sim(lua_State* L)
             tcompute += elapsed;
             printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
 		}
-*/		
+	
 //        tcompute += elapsed;
 //        printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
 //    printf("Total compute time: %e\n", tcompute);
-    
+*/    
 	if(sim->rank == 0){
         printf("Total compute time: %e\n", tcompute);
 		viz_close(viz); // We have only opened a file for the rank=0 node 
