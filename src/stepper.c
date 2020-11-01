@@ -310,6 +310,7 @@ void copy_subgrid(float* restrict dst,
             dst[iy*stride+ix] = src[iy*stride+ix];
 }
 
+/*
 void central2d_periodic(float* restrict u,
                         int nx, int ny, int ng, int nfield)
 {
@@ -332,6 +333,7 @@ void central2d_periodic(float* restrict u,
         copy_subgrid(uk+bg, uk+b, nx+2*ng, ng, s);
     }
 }
+*/
 
 void central2d_periodic_send(float* restrict u,
                              int nx, int ny, int ng, int nfield,
@@ -364,25 +366,90 @@ void central2d_periodic_recv(float* restrict u,
     int nyk[4] = {ny+2*ng, ny+2*ng, ng, ng};
     
     for (int i = 0; i < 4; i++){
+      // Create a temporary place to receive all of the data
+      float* tmpu = (float*) malloc((4*N + 6*s)* sizeof(float));
     
-    // Create a temporary place to receive all of the data
-    float* tmpu = (float*) malloc((4*N + 6*s)* sizeof(float));
+      // Receive the data from the source node
+      printf("Receiving from %d to %d\n",neighbors[i], rank);
+      MPI_Recv(tmpu, 4*N + 6*s, MPI_FLOAT, neighbors[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     
-    // Receive the data from the source node
-    printf("Receiving from %d to %d\n",neighbors[i], rank);
-    MPI_Recv(tmpu, 4*N + 6*s, MPI_FLOAT, neighbors[i], i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    
-    // copy data from recv'd data to ghost blocks
-    for (int k = 0; k < nfield; ++k) {
-        float* uk = u + k*field_stride;
-        float* recv_uk = tmpu + k*field_stride;
-        copy_subgrid(uk+gblock_offset[i], recv_uk+block_offset[i], nxk[i], nyk[i], s);
-        free(recv_uk);
-    }
-    free(tmpu);
+      // copy data from recv'd data to ghost blocks
+      for (int k = 0; k < nfield; ++k) {
+          float* uk = u + k*field_stride;
+          float* recv_uk = tmpu + k*field_stride;
+          copy_subgrid(uk+gblock_offset[i], recv_uk+block_offset[i], nxk[i], nyk[i], s);
+          free(recv_uk);
+      }
+
+      free(tmpu);
     }
 }
 
+void central2d_periodic(float* restrict u,
+                        int nx, int ny, int ng, int nfield,
+                        int rank, int neighbors[4])
+{
+    int nx_all = nx + 2*ng;
+    int ny_all = ny + 2*ng;
+    int nc = nx_all * ny_all;
+    int N  = nfield * nc;
+
+    int s = nx + 2*ng;
+    int field_stride = (ny+2*ng)*s;
+
+    // Offsets of left, right, top, and bottom data blocks and ghost blocks
+    int block_offset[4] = {nx, ng, ng*s, ny*s};
+    int gblock_offset[4] = {0, nx+ng, (ny+ng)*s, 0};
+    int nxk[4] = {ng, ng, nx+2*ng, nx+2*ng};
+    int nyk[4] = {ny+2*ng, ny+2*ng, ng, ng};
+
+    float* tmpu = (float*) malloc((4*N + 6*s)* sizeof(float));
+
+    // Send right, receive left
+    MPI_Sendrecv( u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[1], 0,
+                  tmpu, 4*N +6*s, MPI_FLOAT, neighbors[0], 0,
+                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+    for (int k = 0; k < nfield; ++k) {
+        float* uk = u + k*field_stride;
+        float* recv_uk = tmpu + k*field_stride;
+        copy_subgrid(uk+gblock_offset[0], recv_uk+block_offset[0], nxk[0], nyk[0], s);
+    }
+
+    // Send left, receive right
+    MPI_Sendrecv( u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[0], 0,
+                  tmpu, 4*N +6*s, MPI_FLOAT, neighbors[1], 0,
+                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+    for (int k = 0; k < nfield; ++k) {
+        float* uk = u + k*field_stride;
+        float* recv_uk = tmpu + k*field_stride;
+        copy_subgrid(uk+gblock_offset[1], recv_uk+block_offset[1], nxk[1], nyk[1], s);
+    }
+
+    // Send down, receive up
+    MPI_Sendrecv( u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[2], 0,
+                  tmpu, 4*N +6*s, MPI_FLOAT, neighbors[3], 0,
+                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+    for (int k = 0; k < nfield; ++k) {
+        float* uk = u + k*field_stride;
+        float* recv_uk = tmpu + k*field_stride;
+        copy_subgrid(uk+gblock_offset[3], recv_uk+block_offset[3], nxk[3], nyk[3], s);
+    }
+    // Send up, receive down
+    MPI_Sendrecv( u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[3], 0,
+                  tmpu, 4*N +6*s, MPI_FLOAT, neighbors[2], 0,
+                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+    for (int k = 0; k < nfield; ++k) {
+        float* uk = u + k*field_stride;
+        float* recv_uk = tmpu + k*field_stride;
+        copy_subgrid(uk+gblock_offset[4], recv_uk+block_offset[4], nxk[4], nyk[4], s);
+    }
+
+    free( tmpu );
+}
 
 /**
  * ### Derivatives with limiters
@@ -651,8 +718,7 @@ int central2d_xrun(float* restrict u, float* restrict v,
         // change central2d_periodic into data sharing from left, right, top, bottom processors
         // central2d_periodic(u, nx, ny, ng, nfield);
         printf("Data sharing start...");
-        central2d_periodic_send(u, nx, ny, ng, nfield, rank, neighbors);
-        central2d_periodic_recv(u, nx, ny, ng, nfield, rank, neighbors);
+        central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors);
         MPI_Barrier(MPI_COMM_WORLD);
         printf("Data sharing received...");
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
