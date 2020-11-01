@@ -38,8 +38,8 @@ def main(infile="waves.out", outfile="out.mp4", startpic="start.png"):
 
     fig = plt.figure(figsize=(10,10))
 
-    print("In Plotting: nx = %d, ny = %d" % (nx,ny))
-    print(u);
+    #print("In Plotting: nx = %d, ny = %d" % (nx,ny))
+    #print(u);
     def plot_frame(i, stride=5):
         ax = fig.add_subplot(111, projection='3d')
         ax.set_zlim(0, 2)

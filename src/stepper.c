@@ -158,9 +158,9 @@ void copy_u(float* u, int source_nx, int source_ny,
             full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
             full_sim->u[central2d_offset(full_sim,2,source_x0 + ix,source_y0 + iy)] = u[2*N + iu];
             full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
-            printf("x0-%d y0-%d snx-%d, sny-%d copy_u: ix = %d, iy = %d, iu = %d, iu_full = %d u = %g\n",
+            /*printf("x0-%d y0-%d snx-%d, sny-%d copy_u: ix = %d, iy = %d, iu = %d, iu_full = %d u = %g\n",
                    source_x0,source_y0,source_nx,source_ny,ix,iy,iu,central2d_offset(full_sim,0,source_x0+ix,source_y0+iy), 
-                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);
+                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);/**/
         }
     }
 

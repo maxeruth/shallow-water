@@ -118,7 +118,7 @@ void viz_frame(FILE* fp, central2d_t* sim, int vskip)
         return;
     for (int iy = 0; iy < sim->ny; iy += vskip){
         for (int ix = 0; ix < sim->nx; ix += vskip){
-	    printf("viz_frame: ix-%d iy-%d iu-%d u = %g\n", ix, iy, central2d_offset(sim,0,ix,iy), sim->u[central2d_offset(sim,0,ix,iy)]);	
+	    //printf("viz_frame: ix-%d iy-%d iu-%d u = %g\n", ix, iy, central2d_offset(sim,0,ix,iy), sim->u[central2d_offset(sim,0,ix,iy)]);	
             fwrite(sim->u + central2d_offset(sim,0,ix,iy),
                    sizeof(float), 1, fp);
         }
@@ -250,7 +250,7 @@ int run_sim(lua_State* L)
 //    MPI_Barrier(MPI_COMM_WORLD);
 
     double tcompute = 0;
-/*    
+    
     for (int i = 0; i < frames; ++i) {
         
 #ifdef _OPENMP
@@ -281,7 +281,7 @@ int run_sim(lua_State* L)
 //        printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
 //    printf("Total compute time: %e\n", tcompute);
-*/    
+    
 	if(sim->rank == 0){
         printf("Total compute time: %e\n", tcompute);
 		viz_close(viz); // We have only opened a file for the rank=0 node 
