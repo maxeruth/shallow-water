@@ -137,7 +137,7 @@ void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
 // Copy the data from the source into the full_sim
 void copy_u(float* u, int source_nx, int source_ny, 
             int source_x0, int source_y0, central2d_t* full_sim){
-    printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d\n",source_nx,source_ny,source_x0,source_y0);
+    //printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d\n",source_nx,source_ny,source_x0,source_y0);
     int ng = full_sim->ng;
     int nx_all = source_nx + 2*ng;
     int ny_all = source_ny + 2*ng;
@@ -164,7 +164,7 @@ void send_full_u(int destination, central2d_t* sim){
     int ny_all = sim->ny + 2*sim->ng;
     int nc = nx_all * ny_all;
     int N  = sim->nfield * nc;
-    printf("Sending u from %d to %d\n",sim->rank,destination);
+    //printf("Sending u from %d to %d\n",sim->rank,destination);
     MPI_Send(sim->u, 4*N + 6*nx_all, MPI_FLOAT, destination, 0, MPI_COMM_WORLD);
 }
 
@@ -195,7 +195,7 @@ void recv_full_u(int source, central2d_t* full_sim){
     float* tmpu = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
     
     // Receive the data from the source node
-    printf("Receiving from %d to %d\n",source,full_sim->rank);
+    // printf("Receiving from %d to %d\n",source,full_sim->rank);
     MPI_Recv(tmpu, 4*N + 6*nx_all, MPI_FLOAT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         
     // Copy the data into the full solution array
@@ -206,7 +206,7 @@ void recv_full_u(int source, central2d_t* full_sim){
 
 
 void gather_sol(central2d_t* sim, central2d_t* full_sim){
-	printf("r%d Entering gather_sol\n",sim->rank);
+	// printf("r%d Entering gather_sol\n",sim->rank);
 	if(sim->rank == 0){
 		// Copy sim into full_sim
 		copy_u(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);
@@ -717,10 +717,10 @@ int central2d_xrun(float* restrict u, float* restrict v,
         float cxy[2] = {1.0e-15f, 1.0e-15f};
         // change central2d_periodic into data sharing from left, right, top, bottom processors
         // central2d_periodic(u, nx, ny, ng, nfield);
-        printf("t: %g, Data sharing start...\n", t);
+        // printf("t: %g, Data sharing start...\n", t);
         central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors);
         MPI_Barrier(MPI_COMM_WORLD);
-        printf("Data sharing received...\n");
+        // printf("Data sharing received...\n");
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
         float dt = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
         if (t + 2*dt >= tfinal) {
