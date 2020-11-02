@@ -90,7 +90,7 @@ void solution_check(central2d_t* sim)
 
 FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 {
-	printf("Opening file, rank: %d\n",sim->rank);
+	//printf("Opening file, rank: %d\n",sim->rank);
 	// Make sure only the zero node opens the file
 	if(sim->rank == 0){
 		FILE* fp = fopen(fname, "w");
