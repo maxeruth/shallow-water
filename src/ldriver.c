@@ -13,7 +13,6 @@
 #include "lua-5.4.1/src/lauxlib.h"
 #include "lua-5.4.1/src/lualib.h"
 
-#include <mpi.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -248,7 +247,7 @@ int run_sim(lua_State* L)
         viz_frame(viz, full_sim, vskip);
 	}
     
-//    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     double tcompute = 0;
     

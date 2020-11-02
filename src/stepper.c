@@ -435,7 +435,7 @@ void central2d_periodic(float* restrict u,
     for (int k = 0; k < nfield; ++k) {
         float* uk = u + k*field_stride;
         float* recv_uk = tmpu + k*field_stride;
-        copy_subgrid(uk+gblock_offset[3], recv_uk+block_offset[3], nxk[3], nyk[3], s);
+        copy_subgrid(uk+gblock_offset[2], recv_uk+block_offset[2], nxk[2], nyk[2], s);
     }
     // Send up, receive down
     MPI_Sendrecv( u, 4*N + 6*nx_all, MPI_FLOAT, neighbors[3], 0,
@@ -445,7 +445,7 @@ void central2d_periodic(float* restrict u,
     for (int k = 0; k < nfield; ++k) {
         float* uk = u + k*field_stride;
         float* recv_uk = tmpu + k*field_stride;
-        copy_subgrid(uk+gblock_offset[4], recv_uk+block_offset[4], nxk[4], nyk[4], s);
+        copy_subgrid(uk+gblock_offset[3], recv_uk+block_offset[3], nxk[3], nyk[3], s);
     }
 
     free( tmpu );
@@ -717,10 +717,10 @@ int central2d_xrun(float* restrict u, float* restrict v,
         float cxy[2] = {1.0e-15f, 1.0e-15f};
         // change central2d_periodic into data sharing from left, right, top, bottom processors
         // central2d_periodic(u, nx, ny, ng, nfield);
-        printf("Data sharing start...");
+        printf("t: %g, Data sharing start...\n", t);
         central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors);
         MPI_Barrier(MPI_COMM_WORLD);
-        printf("Data sharing received...");
+        printf("Data sharing received...\n");
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
         float dt = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
         if (t + 2*dt >= tfinal) {
