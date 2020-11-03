@@ -1,4 +1,5 @@
 PLATFORM=gcc
+BLOCK_SIZE=100
 include config/Makefile.in.$(PLATFORM)
 
 .PHONY: src/lshallow

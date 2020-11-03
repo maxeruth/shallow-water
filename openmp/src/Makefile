@@ -1,5 +1,6 @@
 PLATFORM=gcc
 include ../config/Makefile.in.$(PLATFORM)
+CFLAGS+=-DBLOCK_SIZE=$(BLOCK_SIZE)
 
 # ===
 # Main driver and sample run

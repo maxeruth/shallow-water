@@ -402,11 +402,12 @@ int central2d_xrun(float* restrict u, float* restrict v,
                    float tfinal, float dx, float dy, float cfl)
 {
     const int M = (nx%BLOCK_SIZE ? nx/BLOCK_SIZE + 1: nx/BLOCK_SIZE); // number of blocks in x/y direction
-
+    printf("M: %d\n", M);
     int nstep = 0;
     int nx_all = nx + 2*ng;
     int ny_all = ny + 2*ng;
     int nc = nx_all * ny_all;
+    int N = nc * nfield;
     bool done = false;
     float t = 0;
 
@@ -419,41 +420,46 @@ int central2d_xrun(float* restrict u, float* restrict v,
             dt = (tfinal-t)/2;
             done = true;
         }
-        // printf("t: %f, M: %d, Starting blocking...\n", t, M);
+
+        float* uk  = (float*) malloc((4*N + 6*nx_all)* sizeof(float)); // copy out blocking values to uk
         // blocking of the full u
         for (int bj = 0; bj < M; ++bj){
             const int j = bj * BLOCK_SIZE;
             int bny = (j + BLOCK_SIZE > ny ? ny-j : BLOCK_SIZE);
+            int bny_all = bny + 2*ng;
             for (int bi = 0; bi < M; ++bi){
                 const int i = bi * BLOCK_SIZE;
                 int bnx = (i + BLOCK_SIZE > nx ? nx-i : BLOCK_SIZE);
                 int bnx_all = bnx + 2*ng;
-                int bny_all = bny + 2*ng;
-                int bnc = bnx_all * bny_all;
-                int bN = nfield * bnc;
                 int bnxy = bnx_all > bny_all ? bnx_all : bny_all;
-                float* bu  = (float*) malloc((4*bN + 6*bnxy)* sizeof(float)); // if bnx is not equal to bny, here the bnx_all needs to be the max of the two?
+                int bnc = bnxy * bnxy;
+                int bN = nfield * bnc;
+                float* bu  = (float*) malloc((4*bN + 6*bnxy)* sizeof(float));
                 float* bv  = bu +   bN;
                 float* bf  = bu + 2*bN;
                 float* bg  = bu + 3*bN;
                 float* bscratch = bu + 4*bN;
                 // copy u into the blocking u, w/ ghost cells of blocking u
-                // printf("segment: %d, %d\n", i, j);
-                do_copy_in(u + j*ny_all + i, bu, ny_all, bny_all, bny_all, bnx_all, nfield, nc, bnc);
+                // offset when the segment is not square
+                int jj = bny < bnx ? BLOCK_SIZE - bny : 0;
+                int ii = bnx < bny ? BLOCK_SIZE - bnx : 0;
+                do_copy_in(u + (j-jj)*nx_all + (i-ii), bu, ny_all, bnxy, bnxy, bnxy, nfield, nc, bnc);
                 // 2 time step update
                 central2d_step(bu, bv, bscratch, bf, bg,
-                               0, bnx+4, bny+4, ng-2,
+                               0, bnxy-2*ng+4, bnxy-2*ng+4, ng-2,
                                nfield, flux, speed,
                                dt, dx, dy);
                 central2d_step(bv, bu, bscratch, bf, bg,
-                               1, bnx, bny, ng,
+                               1, bnxy-2*ng, bnxy-2*ng, ng,
                                nfield, flux, speed,
                                dt, dx, dy);
                 // copy blocking u out of the original u, w/o ghost cells of blocking u
-                do_copy_out(u + (ng+j)*ny_all + ng + i, bu + ng*bny_all + ng, ny_all, bny_all, bny, bnx, nfield, nc, bnc);
+                do_copy_out(uk + (ng+j)*nx_all + ng + i, bu + (ng+jj)*bnxy + ng + ii, nx_all, bnxy, bny, bnx, nfield, nc, bnc);
                 free(bu);
             }
         }
+        do_copy_out(u + ng*nx_all + ng, uk + ng*nx_all + ng, ny_all, ny_all, ny, nx, nfield, nc, nc);
+        free(uk);
         t += 2*dt;
         nstep += 2;
     }
