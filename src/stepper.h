@@ -63,6 +63,7 @@ typedef struct central2d_t {
     float* f;
     float* g;
     float* scratch;
+    float* u_comm; // Used for communicating
 
 } central2d_t;
 
