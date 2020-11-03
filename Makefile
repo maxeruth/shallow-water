@@ -1,7 +1,7 @@
 # SHELL = /bin/bash
 
 PLATFORM=graphite
-GSIZE= 27 
+GSIZE= 300 
 XDIM=3
 YDIM=3
 PROCESSES= 9
