@@ -61,16 +61,16 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the offsets for loops
     int x0,y0;
-    x0 = X * (nx_total/NX);
-    y0 = Y * (ny_total/NY);
+    x0 = X *(1 + (nx_total/NX));
+    y0 = Y *(1 + (ny_total/NY));
     
     sim->x0 = x0;
     sim->y0 = y0;
     
     // Get the total number of points "owned" in each direction
     int nx,ny;
-    nx = ((nx_total/NX) < (nx_total-x0)) ? (nx_total/NX) : (nx_total-x0);
-    ny = ((ny_total/NY) < (ny_total-y0)) ? (ny_total/NY) : (ny_total-y0);
+    nx = ((nx_total/NX)+1 < (nx_total-x0)) ? (nx_total/NX)+1 : (nx_total-x0);
+    ny = ((ny_total/NY)+1 < (ny_total-y0)) ? (ny_total/NY)+1 : (ny_total-y0);
     
     sim->nx = nx;
     sim->ny = ny;
@@ -203,12 +203,12 @@ void recv_full_u(int source, central2d_t* full_sim){
     Y = source/NX; X = source%NX;
     
     int x0,y0;
-    x0 = X * (full_sim->nx/NX);
-    y0 = Y * (full_sim->ny/NY);
+    x0 = X * (1 + (full_sim->nx/NX));
+    y0 = Y * (1 + (full_sim->ny/NY));
     
     int nx,ny;
-    nx = ( ( full_sim->nx / NX ) < ( full_sim->nx - x0 ) ) ? ( full_sim->nx / NX ) : ( full_sim->nx - x0 );
-    ny = ( ( full_sim->ny / NY ) < ( full_sim->ny - y0 ) ) ? ( full_sim->ny / NY ) : ( full_sim->ny - y0 );
+    nx = ( (full_sim->nx/NX)+1 < (full_sim->nx-x0)) ? (full_sim->nx/NX)+1 : (full_sim->nx-x0);
+    ny = ( (full_sim->ny/NY)+1 < (full_sim->ny-y0)) ? (full_sim->ny/NY)+1 : (full_sim->ny-y0);
     
     int ng = full_sim->ng;
     int nx_all = nx + 2*ng;
