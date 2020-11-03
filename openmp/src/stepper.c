@@ -1,6 +1,6 @@
 #include "stepper.h"
 
-// #include <omp.h>
+#include <omp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -411,6 +411,8 @@ int central2d_xrun(float* restrict u, float* restrict v,
     bool done = false;
     float t = 0;
 
+    //int max_threads = omp_get_max_threads();
+
     while (!done) {
         float cxy[2] = {1.0e-15f, 1.0e-15f};
         central2d_periodic(u, nx, ny, ng, nfield);
@@ -422,6 +424,13 @@ int central2d_xrun(float* restrict u, float* restrict v,
         }
 
         float* uk  = (float*) malloc((4*N + 6*nx_all)* sizeof(float)); // copy out blocking values to uk
+
+        /**
+         * Use openmp to parallize the for loop
+         * 
+         * 
+         */
+        #pragma omp parallel for
         // blocking of the full u
         for (int bj = 0; bj < M; ++bj){
             const int j = bj * BLOCK_SIZE;
