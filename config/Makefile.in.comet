@@ -12,8 +12,8 @@ PYTHON=python
 #PYTHON=/share/apps/anaconda3/2020.07/bin/python
 
 # Lua front-end
-LUA_CFLAGS=-I/home/jiah/local/include
-LUA_LIBS=-L/home/jiah/local/lib -llua -lm
+LUA_CFLAGS=-I$(HOME)/local/include
+LUA_LIBS=-L$(HOME)/local/lib -llua -lm
 
 # Other necessary libraries
 LIBS=-qopenmp
