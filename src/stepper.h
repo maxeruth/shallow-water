@@ -127,7 +127,9 @@ int central2d_run(central2d_t* sim, float tfinal);
  *
  */
 //void central2d_periodic(float* u, int nx, int ny, int ng, int nfield);
-void central2d_periodic( float* u, int nx, int ny, int ng, int nfield, int rank, int neighbors[4] );
+void central2d_periodic( float* restrict u, 
+                         int nx, int ny, int ng, int nfield, 
+                         int rank, int neighbors[4], float* restrict u_comm );
 
 //ldoc off
 #endif /* STEPPER_H */

@@ -267,7 +267,7 @@ int run_sim(lua_State* L)
 #else
         int nstep = central2d_run(sim, ftime);
         double elapsed = 0;
-#endif
+#endif 
 		// Same as before the loop
 		gather_sol(sim,full_sim); 
 		if(sim->rank == 0){
@@ -285,7 +285,7 @@ int run_sim(lua_State* L)
 	if(sim->rank == 0){
         printf("Total compute time: %e\n", tcompute);
 		viz_close(viz); // We have only opened a file for the rank=0 node 
-	}
+	}/**/
     central2d_free(sim);
     central2d_free(full_sim); // Dunno if this has to be edited
     return 0;

@@ -15,6 +15,23 @@
  * ### Structure allocation
  */
 
+
+void print_array(float* u, int nx, int ny, int rank){
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(rank==0){
+        printf("Array:\n");
+        for(int iy = 0; iy < ny; iy++) {
+            for(int ix = 0; ix < nx; ix++) {
+                printf("%7g ", u[nx*iy + ix]);
+            }
+            printf("\n");
+        } 
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
 central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
                             int ng, int NX, int NY,
                             int nfield, flux_t flux, speed_t speed,
@@ -40,7 +57,7 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     
     // Get the positions (rank = Y * NY + X)
     int X,Y;
-    Y = rank/NY; X = rank%NY;
+    Y = rank/NX; X = rank%NX;
     
     // Get the offsets for loops
     int x0,y0;
@@ -89,19 +106,21 @@ central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
     sim->neighbors[2] = ((Y+1)%NY)*NX + X;         // top
     sim->neighbors[3] = ((Y+NY-1)%NY)*NX + X;      // bottom
 
-	/*printf("\nsim set up\n"
-	       //"rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
-	       //"rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
-	       //"rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
-	       "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
-	       "rank = %d, left_neighbor = %d, right_neighbor = %d\n\n",
-	       //sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
-	       //sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
-	       //sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
-	       sim->rank,sim->neighbors[3],sim->neighbors[2],
-	       sim->rank,sim->neighbors[0],sim->neighbors[1]);*/
-	
-	// printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
+    /*printf("\nsim set up\n"
+           "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
+           "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
+           "rank = %d, X = %d, Y = %d,\n"
+           "rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
+           "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
+           "rank = %d, left_neighbor = %d, right_neighbor = %d\n\n",
+           sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
+           sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
+	   sim->rank,X,Y,
+           sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
+           sim->rank,sim->neighbors[3],sim->neighbors[2],
+           sim->rank,sim->neighbors[0],sim->neighbors[1]);/**/
+
+    // printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
 	
     return sim;
 }
@@ -181,7 +200,7 @@ void recv_full_u(int source, central2d_t* full_sim){
     int NX,NY;
     NX = full_sim->NX; 
     NY = full_sim->NY;
-    Y = source/NY; X = source%NY;
+    Y = source/NX; X = source%NX;
     
     int x0,y0;
     x0 = X * (full_sim->nx/NX);
@@ -206,8 +225,10 @@ void recv_full_u(int source, central2d_t* full_sim){
         
     // Copy the data into the full solution array
     copy_u(tmpu, nx, ny, x0, y0, full_sim);
-    
+   
+    // printf("r%d Freeing tmpu\n",full_sim->rank); 
     free(tmpu);
+    // printf("r%d tmpu freed\n", full_sim->rank);
 }
 
 
@@ -289,7 +310,7 @@ void central2d_periodic(float* restrict u,
                         int nx, int ny, int ng, int nfield,
                         int rank, int neighbors[4], float* restrict u_comm)
 {
-	int nx_all = nx + 2*ng;
+    int nx_all = nx + 2*ng;
     int ny_all = ny + 2*ng;
     int nc = nx_all * ny_all;
     int N  = nfield * nc;
@@ -304,26 +325,31 @@ void central2d_periodic(float* restrict u,
     int fs_lr = ng*ny;
     int fs_tb = ng*nx_all;
 
-	float* u_lr_send = u_comm;
-	float* u_lr_recv = u_comm + N_lr; 
-	float* u_tb_send = u_comm + 2*N_lr;
-	float* u_tb_recv = u_comm + 2*N_lr + N_tb;
+    float* u_lr_send = u_comm;
+    float* u_lr_recv = u_comm + N_lr; 
+    float* u_tb_send = u_comm + 2*N_lr;
+    float* u_tb_recv = u_comm + 2*N_lr + N_tb;
+
+    float* u_l = u + ng*nx_all + ng; // Down ng rows, right ng columns
+    float* u_r = u + ng*nx_all + nx; // Down ng rows, right nx columns
+    float* u_b = u + ny*nx_all;      // Down ny rows
+    float* u_t = u + ng*nx_all;      // Down ng rows
 	
-	float* u_l = u + ng*nx_all;         // Down ng rows
-	float* u_r = u + ng*nx_all + ng+nx; // Down ng rows, over ng+nx columns
-	float* u_b = u + (ng+ny)*nx_all;    // Down ng+ny rows
-	float* u_t = u;                     // The top is at the top!
+    float* gu_l = u + ng*nx_all;         // Down ng rows (g = ghost)
+    float* gu_r = u + ng*nx_all + ng+nx; // Down ng rows, over ng+nx columns
+    float* gu_b = u + (ng+ny)*nx_all;    // Down ng+ny rows
+    float* gu_t = u;                     // The top is at the top!
 
-	int nx_lr = ng;
-	int ny_lr = ny;
-	int nx_tb = nx_all;
-	int ny_tb = ng;
+    int nx_lr = ng;
+    int ny_lr = ny;
+    int nx_tb = nx_all;
+    int ny_tb = ng;
 
 
-	// Commented version of send right, receive left
+    // Commented version of send right, receive left
 	
-	// Fill u_lr_send with the data from the right side of u
-	for (int k = 0; k < nfield; ++k)
+    // Fill u_lr_send with the data from the right side of u
+    for (int k = 0; k < nfield; ++k)
         copy_subgrid(u_lr_send + k*fs_lr, u_r + k*fs, nx_lr, ny_lr, s_lr, s);
 
     // Send right, receive left
@@ -331,13 +357,13 @@ void central2d_periodic(float* restrict u,
                   u_lr_recv, N_lr, MPI_FLOAT, neighbors[0], 0,
                   MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
-	// Fill the left side of u with the received data from u_lr_recv
+    // Fill the left side of u with the received data from u_lr_recv
     for (int k = 0; k < nfield; ++k)
-		copy_subgrid(u_l + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
+        copy_subgrid(gu_l + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
     
 
     // Send left, receive right
-	for (int k = 0; k < nfield; ++k)
+    for (int k = 0; k < nfield; ++k)
         copy_subgrid(u_lr_send + k*fs_lr, u_l + k*fs, nx_lr, ny_lr, s_lr, s);
 
     MPI_Sendrecv( u_lr_send, N_lr, MPI_FLOAT, neighbors[0], 0,
@@ -345,7 +371,7 @@ void central2d_periodic(float* restrict u,
                   MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
     for (int k = 0; k < nfield; ++k)
-		copy_subgrid(u_r + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
+	copy_subgrid(gu_r + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
     
 
     // Send down, receive up
@@ -357,7 +383,7 @@ void central2d_periodic(float* restrict u,
                   MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
     for (int k = 0; k < nfield; ++k)
-		copy_subgrid(u_t + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
+        copy_subgrid(gu_t + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
 		
     // Send up, receive down
     for (int k = 0; k < nfield; ++k)
@@ -368,7 +394,7 @@ void central2d_periodic(float* restrict u,
                   MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
     for (int k = 0; k < nfield; ++k)
-		copy_subgrid(u_b + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
+		copy_subgrid(gu_b + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
 }
 
 /**
@@ -635,18 +661,22 @@ int central2d_xrun(float* restrict u, float* restrict v,
     float t = 0;
     while (!done) {
         float cxy[2] = {1.0e-15f, 1.0e-15f};
-		printf("r%d Sharing data w/ neighbors", rank);
-        central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors, u_comm);
-        // MPI_Barrier(MPI_COMM_WORLD);
-        printf("r%d Data sharing received...\n", rank);
+        // printf("r%d Sharing data w/ neighbors", rank);
+        // if(nstep == 0)
+        //     print_array(u,nx_all,ny_all,rank);
+	central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors, u_comm);
+        // if(nstep == 0)
+        //    print_array(u,nx_all,ny_all,rank);
+	// MPI_Barrier(MPI_COMM_WORLD);
+        // printf("r%d Data sharing received...\n", rank);
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
         float dt_local = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
         float dt;
         
-		printf("r%d Starting Allreduce",rank);
+        //printf("r%d Starting Allreduce\n",rank);
         MPI_Allreduce(&dt_local, &dt, 1, 
                       MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-        printf("r%d Ending Allreduce",rank);
+        // printf("r%d Ending Allreduce, dt = %g, dt_local = %g\n", rank,dt,dt_local);
         
         if (t + 2*dt >= tfinal) {
             dt = (tfinal-t)/2;

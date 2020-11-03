@@ -1,8 +1,10 @@
+# SHELL = /bin/bash
+
 PLATFORM=graphite
-PROCESSES=4
-GSIZE=200
+GSIZE= 8
 XDIM=2
-YDIM=2
+YDIM=1
+PROCESSES= 2
 include config/Makefile.in.$(PLATFORM)
 
 .PHONY: src/lshallow
