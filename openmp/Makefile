@@ -5,7 +5,7 @@ include config/Makefile.in.$(PLATFORM)
 .PHONY: src/lshallow
 
 src/lshallow:
-	( cd src ; make PLATFORM=$(PLATFORM) )
+	( cd src ; make PLATFORM=$(PLATFORM) BLOCK_SIZE=$(BLOCK_SIZE))
 
 # ===
 # Run small or big version
