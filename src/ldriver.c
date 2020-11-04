@@ -1,5 +1,3 @@
-#include <mpi.h>
-
 #include "stepper.h"
 #include "shallow2d.h"
 
@@ -9,26 +7,14 @@
 #include <sys/time.h>
 #endif
 
-#include "lua-5.4.1/src/lua.h"
-#include "lua-5.4.1/src/lauxlib.h"
-#include "lua-5.4.1/src/lualib.h"
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 
-
-// The number of ghost cells
-#ifndef ng_IN
-#define ng_IN ((int) 4)
-#endif
-
-
-// The number of time steps 
-#ifndef BLOCK_STEPS
-#define BLOCK_STEPS ((int) 1)
-#endif
-
+#include <mpi.h>
 
 //ldoc on
 /**
@@ -69,10 +55,6 @@ void solution_check(central2d_t* sim)
     h_sum *= cell_area;
     hu_sum *= cell_area;
     hv_sum *= cell_area;
-    
-    // Communicate? OR Only call this for node 0?
-    
-    
     printf("-\n  Volume: %g\n  Momentum: (%g, %g)\n  Range: [%g, %g]\n",
            h_sum, hu_sum, hv_sum, hmin, hmax);
     assert(hmin > 0);
@@ -90,20 +72,12 @@ void solution_check(central2d_t* sim)
 
 FILE* viz_open(const char* fname, central2d_t* sim, int vskip)
 {
-	//printf("Opening file, rank: %d\n",sim->rank);
-	// Make sure only the zero node opens the file
-	if(sim->rank == 0){
-		FILE* fp = fopen(fname, "w");
-		printf("r%d Opened, vskip = %d\n",sim->rank,vskip);
-		if (fp) {
-			float xy[2] = {sim->nx/vskip, sim->ny/vskip};
-			fwrite(xy, sizeof(float), 2, fp);
-		}
-		return fp;
-	}
-	else{
-		return 0;
-	}
+    FILE* fp = fopen(fname, "w");
+    if (fp) {
+        float xy[2] = {sim->nx/vskip, sim->ny/vskip};
+        fwrite(xy, sizeof(float), 2, fp);
+    }
+    return fp;
 }
 
 void viz_close(FILE* fp)
@@ -115,13 +89,10 @@ void viz_frame(FILE* fp, central2d_t* sim, int vskip)
 {
     if (!fp)
         return;
-    for (int iy = 0; iy < sim->ny; iy += vskip){
-        for (int ix = 0; ix < sim->nx; ix += vskip){
-	    //printf("viz_frame: ix-%d iy-%d iu-%d u = %g\n", ix, iy, central2d_offset(sim,0,ix,iy), sim->u[central2d_offset(sim,0,ix,iy)]);	
+    for (int iy = 0; iy < sim->ny; iy += vskip)
+        for (int ix = 0; ix < sim->nx; ix += vskip)
             fwrite(sim->u + central2d_offset(sim,0,ix,iy),
                    sizeof(float), 1, fp);
-        }
-    }
 }
 
 /**
@@ -146,18 +117,16 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
     lua_getfield(L, 1, "init");
     if (lua_type(L, -1) != LUA_TFUNCTION)
         luaL_error(L, "Expected init to be a string");
-    
-    //printf("Pulling properties of sim\n");
+
     int nx = sim->nx, ny = sim->ny, nfield = sim->nfield;
+    int block_x = sim->block_x, block_y = sim->block_y;
     float dx = sim->dx, dy = sim->dy;
-    int x0 = sim->x0, y0 = sim->y0; // Offsets for the given processor
     float* u = sim->u;
-    
-    //printf("In lua_init_sim w/ x0=%d, y0=%d\n",x0,y0);
+
     for (int ix = 0; ix < nx; ++ix) {
-        float x = (x0 + ix + 0.5) * dx; // x shifted by offset
+        float x = ((ix + block_x * nx) + 0.5) * dx;
         for (int iy = 0; iy < ny; ++iy) {
-            float y = (y0 + iy + 0.5) * dy; // y shifted by offset
+            float y = ((iy + block_y * ny) + 0.5) * dy;
             lua_pushvalue(L, -1);
             lua_pushnumber(L, x);
             lua_pushnumber(L, y);
@@ -165,7 +134,6 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
             for (int k = 0; k < nfield; ++k)
                 u[central2d_offset(sim,k,ix,iy)] = lua_tonumber(L, k-nfield);
             lua_pop(L, nfield);
-            //printf("lua_init_sim: rank = %d, x = %g, y = %g, ind = %d, u = %g\n",sim->rank,x,y,central2d_offset(sim,0,ix,iy),u[central2d_offset(sim,0,ix,iy)]);
         }
     }
 
@@ -189,7 +157,6 @@ void lua_init_sim(lua_State* L, central2d_t* sim)
 
 int run_sim(lua_State* L)
 {
-    	
     int n = lua_gettop(L);
     if (n != 1 || !lua_istable(L, 1))
         luaL_error(L, "Argument must be a table");
@@ -200,8 +167,8 @@ int run_sim(lua_State* L)
     lua_getfield(L, 1, "ftime");
     lua_getfield(L, 1, "nx");
     lua_getfield(L, 1, "ny");
-    lua_getfield(L, 1, "NX_IN");
-    lua_getfield(L, 1, "NY_IN");
+    lua_getfield(L, 1, "block_nx");
+    lua_getfield(L, 1, "block_ny");
     lua_getfield(L, 1, "vskip");
     lua_getfield(L, 1, "frames");
     lua_getfield(L, 1, "out");
@@ -210,84 +177,92 @@ int run_sim(lua_State* L)
     double h     = luaL_optnumber(L, 3, w);
     double cfl   = luaL_optnumber(L, 4, 0.45);
     double ftime = luaL_optnumber(L, 5, 0.01);
-    int nx_total = luaL_optinteger(L, 6, 200);
-    int ny_total = luaL_optinteger(L, 7, nx_total);
-    int NX_IN    = luaL_optinteger(L, 8, 1);
-    int NY_IN    = luaL_optinteger(L, 9, 1);
+    int nx       = luaL_optinteger(L, 6, 200);
+    int ny       = luaL_optinteger(L, 7, nx);
+    int block_nx = luaL_optinteger(L, 8, 200);
+    int block_ny = luaL_optinteger(L, 9, 200);
     int vskip    = luaL_optinteger(L, 10, 1);
     int frames   = luaL_optinteger(L, 11, 50);
     const char* fname = luaL_optstring(L, 12, "sim.out");
     lua_pop(L, 9);
-    // printf("In run_sim, still before any edited functions\n");
-	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
-    // printf("ng_IN: %d", ng_IN);
-    central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
-                                      3, shallow2d_flux, shallow2d_speed, cfl);
-    
-    //printf("Successfully initialized sim\n");
-    
-    // Populate the simulation struct with initial conditions
-    lua_init_sim(L,sim);
-    //printf("r%d Filled sim with ICs\n",sim->rank);
-    
-    
-    //printf("Opened file viz\n");
 
-    printf("r%d %g %g %d %d %g %d %g\n", sim->rank, w, h, nx_total, ny_total, cfl, frames, ftime);
-     
-    // This is the new block of code that updates the .out file and checks the solution
-    central2d_t* full_sim = malloc(sizeof(central2d_t));
-    copy_basic_info(nx_total,ny_total,sim,full_sim);
-//    printf("Ran copy_basic_info\n");
-	FILE* viz = viz_open(fname, full_sim, vskip);
-	
-    gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
-    if(sim->rank == 0){
-		solution_check(full_sim);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int block_x, block_y;
+    block_x = rank % block_nx;
+    block_y = rank / block_nx;
+
+    central2d_t* sim = central2d_init(w, h, nx, ny,
+                                      block_nx, block_ny, block_x, block_y,
+                                      3, shallow2d_flux, shallow2d_speed, cfl);
+
+    central2d_t* full_sim;
+    if(rank == 0)
+        full_sim = central2d_init(w, h, nx, ny, 1, 1, 0, 0,
+                                  3, shallow2d_flux, shallow2d_speed, cfl);
+
+    lua_init_sim(L,sim);
+
+    FILE* viz;
+    central2d_gather(full_sim, sim);
+    if(rank == 0) {
+        printf("open viz file\n");
+        viz = viz_open(fname, full_sim, vskip);
+        printf("check sol\n");
+        solution_check(full_sim);
+        printf("write viz\n");
         viz_frame(viz, full_sim, vskip);
-	}
-    
-    MPI_Barrier(MPI_COMM_WORLD);
+    }
 
     double tcompute = 0;
-    
     for (int i = 0; i < frames; ++i) {
-        
 #ifdef _OPENMP
-        double t0 = omp_get_wtime();
+        double t0, t1, elapsed;
+        if(rank == 0)
+            t0 = omp_get_wtime();
         int nstep = central2d_run(sim, ftime);
-        double t1 = omp_get_wtime();
-        double elapsed = t1-t0;
+	MPI_Barrier(MPI_COMM_WORLD);
+        if(rank == 0){
+            t1 = omp_get_wtime();
+            elapsed = t1-t0;
+        }
 #elif defined SYSTIME
-        struct timeval t0, t1;
-        gettimeofday(&t0, NULL);
+	struct timeval t0, t1;
+	double elapsed;
+        if(rank == 0)
+            gettimeofday(&t0, NULL);
         int nstep = central2d_run(sim, ftime);
-        gettimeofday(&t1, NULL);
-        double elapsed = (t1.tv_sec-t0.tv_sec) + (t1.tv_usec-t0.tv_usec)*1e-6;
+	MPI_Barrier(MPI_COMM_WORLD);
+        if(rank == 0){
+            gettimeofday(&t1, NULL);
+            elapsed = (t1.tv_sec-t0.tv_sec) + (t1.tv_usec-t0.tv_usec)*1e-6;
+        }
 #else
+	double elapsed;
         int nstep = central2d_run(sim, ftime);
-        double elapsed = 0;
-#endif 
-		// Same as before the loop
-		gather_sol(sim,full_sim); 
-		if(sim->rank == 0){
-			solution_check(full_sim);
-			viz_frame(viz, full_sim, vskip);
+	MPI_Barrier(MPI_COMM_WORLD);
+        if(rank == 0)
+            elapsed = 0;
+#endif
+        central2d_gather(full_sim, sim);
+        if(rank == 0){
+            solution_check(full_sim);
             tcompute += elapsed;
             printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
-		}
-	
-//        tcompute += elapsed;
-//        printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
+            viz_frame(viz, full_sim, vskip);
+        }
     }
-//    printf("Total compute time: %e\n", tcompute);
-    
-	if(sim->rank == 0){
+
+    if(rank == 0){
         printf("Total compute time: %e\n", tcompute);
-		viz_close(viz); // We have only opened a file for the rank=0 node 
-	}/**/
+        viz_close(viz);
+    }
+
     central2d_free(sim);
-    central2d_free(full_sim); // Dunno if this has to be edited
+    if(rank == 0){
+        central2d_free(full_sim);
+    }
+
     return 0;
 }
 
@@ -306,18 +281,12 @@ int run_sim(lua_State* L)
 
 int main(int argc, char** argv)
 {
-	
-	// Initialize MPI environment
-    MPI_Init(&argc, &argv);
-    //printf("Entering main\n");
-
-	// Gotta include something to input
+    MPI_Init( &argc, &argv );
     if (argc < 2) {
         fprintf(stderr, "Usage: %s fname args\n", argv[0]);
         return -1;
     }
 
-	
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
     lua_register(L, "simulate", run_sim);
@@ -332,7 +301,6 @@ int main(int argc, char** argv)
     if (luaL_dofile(L, argv[1]))
         printf("%s\n", lua_tostring(L,-1));
     lua_close(L);
-    
     MPI_Finalize();
     return 0;
 }

@@ -1,12 +1,11 @@
 #include "stepper.h"
 
-#include <mpi.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <mpi.h>
 
 //ldoc on
 /**
@@ -15,237 +14,41 @@
  * ### Structure allocation
  */
 
-
-void print_array(float* u, int nx, int ny, int rank){
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    if(rank==0){
-        printf("Array:\n");
-        for(int iy = 0; iy < ny; iy++) {
-            for(int ix = 0; ix < nx; ix++) {
-                printf("%7g ", u[nx*iy + ix]);
-            }
-            printf("\n");
-        } 
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-}
-
-central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
-                            int ng, int NX, int NY,
+central2d_t* central2d_init(float w, float h, int nx, int ny,
+                            int block_nx, int block_ny,
+			    int block_x, int block_y,
                             int nfield, flux_t flux, speed_t speed,
                             float cfl)
 {
-	// For definitions of the values, see stepper.h
+    // We extend to a four cell buffer to avoid BC comm on odd time steps
+    int ng = 4;
+
     central2d_t* sim = (central2d_t*) malloc(sizeof(central2d_t));
-    
-    // Get number of processors, make sure that NX*NY is the world size
-    int world_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    if (NX*NY != world_size){
-        fprintf(stderr, "Number of processors in grid (%d) does not match world size (%d)\n", NX*NY, world_size);
-        exit(-1);
-    }
-    
-    sim->world_size = world_size;
-		
-    // Get rank of the process
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    sim->rank = rank;
-    
-    // Get the positions (rank = Y * NY + X)
-    int X,Y;
-    Y = rank/NX; X = rank%NX;
-    
-    // Get the offsets for loops
-    int x0,y0;
-    x0 = X *(1 + (nx_total/NX));
-    y0 = Y *(1 + (ny_total/NY));
-    
-    sim->x0 = x0;
-    sim->y0 = y0;
-    
-    // Get the total number of points "owned" in each direction
-    int nx,ny;
-    nx = ((nx_total/NX)+1 < (nx_total-x0)) ? (nx_total/NX)+1 : (nx_total-x0);
-    ny = ((ny_total/NY)+1 < (ny_total-y0)) ? (ny_total/NY)+1 : (ny_total-y0);
-    
-    sim->nx = nx;
-    sim->ny = ny;
-    
-    sim->NX = NX;
-    sim->NY = NY;
+    sim->nx = nx / block_nx;
+    sim->ny = ny / block_nx;
+    sim->block_nx = block_nx;
+    sim->block_ny = block_ny;
+    sim->block_x = block_x;
+    sim->block_y = block_y;
     sim->ng = ng;
     sim->nfield = nfield;
-    sim->dx = w/nx_total;
-    sim->dy = h/ny_total;
+    sim->dx = w / nx;
+    sim->dy = h / ny;
     sim->flux = flux;
     sim->speed = speed;
     sim->cfl = cfl;
-    
-    int nx_all = nx + 2*ng;
-    int ny_all = ny + 2*ng;
+
+    int nx_all = sim->nx + 2*ng;
+    int ny_all = sim->ny + 2*ng;
     int nc = nx_all * ny_all;
     int N  = nfield * nc;
-    int N_lr = nfield * ng * ny; // Number of left/right ghost cells (no corners)
-    int N_tb = nfield * ng * nx_all; // Number of top/bottom ghost cells (w/ corners)
-    sim->u  = (float*) malloc((4*N + 6*nx_all + 2*N_tb + 2*N_lr)* sizeof(float));
+    sim->u  = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
     sim->v  = sim->u +   N;
     sim->f  = sim->u + 2*N;
     sim->g  = sim->u + 3*N;
     sim->scratch = sim->u + 4*N;
-    sim->u_comm = sim->u + 4*N + 6*nx_all;
-    
-    
-    
-    
-    sim->neighbors[0] = Y*NX + (X+NX-1)%NX;        // left
-    sim->neighbors[1] = Y*NX + (X+NX+1)%NX;        // right
-    sim->neighbors[2] = ((Y+1)%NY)*NX + X;         // top
-    sim->neighbors[3] = ((Y+NY-1)%NY)*NX + X;      // bottom
 
-    /*printf("\nsim set up\n"
-           "rank = %d, nfield = %d, nx = %d, ny = %d, ng = %d,\n"
-           "rank = %d, dx = %g, dy = %g, cfl = %g, world_size = %d,\n"
-           "rank = %d, X = %d, Y = %d,\n"
-           "rank = %d, NX = %d, NY = %d, x0 = %d, y0 = %d,\n"
-           "rank = %d, bottom_neighbor = %d, top_neighbor = %d,\n"
-           "rank = %d, left_neighbor = %d, right_neighbor = %d\n\n",
-           sim->rank,sim->nfield,sim->nx,sim->ny,sim->ng,
-           sim->rank,sim->dx,sim->dy,sim->cfl,sim->world_size,
-	   sim->rank,X,Y,
-           sim->rank,sim->NX,sim->NY,sim->x0,sim->y0,
-           sim->rank,sim->neighbors[3],sim->neighbors[2],
-           sim->rank,sim->neighbors[0],sim->neighbors[1]);/**/
-
-    // printf("Just to make sure: rank - Y*NX+X = %d\n",rank - (Y*NX+X));
-	
     return sim;
-}
-
-
-void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim){
-	full_sim->nfield = sim->nfield;
-	full_sim->nx = nx;
-	full_sim->ny = ny;
-	full_sim->ng = sim->ng;
-	full_sim->dx = sim->dx;
-	full_sim->dy = sim->dy;
-	full_sim->cfl = sim->cfl;
-	full_sim->rank = sim->rank;
-	full_sim->world_size = sim->world_size; 
-	full_sim->NX = sim->NX;
-	full_sim->NY = sim->NY;
-	full_sim->x0 = 0;
-	full_sim->y0 = 0;
-    for (int i = 0; i < 4; ++i){
-        full_sim->neighbors[i] = 0;
-    }
-	
-	full_sim->flux = sim->flux;
-	full_sim->speed = sim->speed;
-	
-	int nx_all = nx + 2*full_sim->ng;
-    int ny_all = ny + 2*full_sim->ng;
-    int nc = nx_all * ny_all;
-    int N  = full_sim->nfield * nc;
-	full_sim->u  = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
-	full_sim->v  = sim->u +   N;
-    full_sim->f  = sim->u + 2*N;
-    full_sim->g  = sim->u + 3*N;
-    full_sim->scratch = sim->u + 4*N;
-	
-}
-
-// Copy the data from the source into the full_sim
-void copy_u(float* u, int source_nx, int source_ny, 
-            int source_x0, int source_y0, central2d_t* full_sim){
-    //printf("Entering copy_u w/ nx = %d, ny = %d, x0 = %d, y0 = %d\n",source_nx,source_ny,source_x0,source_y0);
-    int ng = full_sim->ng;
-    int nx_all = source_nx + 2*ng;
-    int ny_all = source_ny + 2*ng;
-    int N = nx_all * ny_all;
-
-    for (int iy = 0; iy < source_ny; ++iy){
-        for (int ix = 0; ix < source_nx; ++ix){
-            int iu = (ng+iy)*nx_all + (ng+ix);
-            full_sim->u[central2d_offset(full_sim,0,source_x0 + ix,source_y0 + iy)] = u[iu];
-            full_sim->u[central2d_offset(full_sim,1,source_x0 + ix,source_y0 + iy)] = u[N + iu];
-            full_sim->u[central2d_offset(full_sim,2,source_x0 + ix,source_y0 + iy)] = u[2*N + iu];
-            full_sim->u[central2d_offset(full_sim,3,source_x0 + ix,source_y0 + iy)] = u[3*N + iu];
-            /*printf("x0-%d y0-%d snx-%d, sny-%d copy_u: ix = %d, iy = %d, iu = %d, iu_full = %d u = %g\n",
-                   source_x0,source_y0,source_nx,source_ny,ix,iy,iu,central2d_offset(full_sim,0,source_x0+ix,source_y0+iy), 
-                   full_sim->u[central2d_offset(full_sim,0,source_x0+ix,source_y0+iy)]);*/
-        }
-    }
-}
-
-
-// Send data from sim->u to a destination (probably the rank 0 node)
-void send_full_u(int destination, central2d_t* sim){
-    int nx_all = sim->nx + 2*sim->ng;
-    int ny_all = sim->ny + 2*sim->ng;
-    int nc = nx_all * ny_all;
-    int N  = sim->nfield * nc;
-    //printf("Sending u from %d to %d\n",sim->rank,destination);
-    MPI_Send(sim->u, 4*N + 6*nx_all, MPI_FLOAT, destination, 0, MPI_COMM_WORLD);
-}
-
-// Receive data from send_full_u. Assumes full_sim is the full simulation for writes and solution checking
-void recv_full_u(int source, central2d_t* full_sim){
-    // Calculate the amount of data that must be coming from source:
-    int X,Y;
-    int NX,NY;
-    NX = full_sim->NX; 
-    NY = full_sim->NY;
-    Y = source/NX; X = source%NX;
-    
-    int x0,y0;
-    x0 = X * (1 + (full_sim->nx/NX));
-    y0 = Y * (1 + (full_sim->ny/NY));
-    
-    int nx,ny;
-    nx = ( (full_sim->nx/NX)+1 < (full_sim->nx-x0)) ? (full_sim->nx/NX)+1 : (full_sim->nx-x0);
-    ny = ( (full_sim->ny/NY)+1 < (full_sim->ny-y0)) ? (full_sim->ny/NY)+1 : (full_sim->ny-y0);
-    
-    int ng = full_sim->ng;
-    int nx_all = nx + 2*ng;
-    int ny_all = ny + 2*ng;
-    int nc = nx_all * ny_all;
-    int N  = full_sim->nfield * nc;
-    
-    // Create a temporary place to receive all of the data
-    float* tmpu = (float*) malloc((4*N + 6*nx_all)* sizeof(float));
-    
-    // Receive the data from the source node
-    // printf("Receiving from %d to %d\n",source,full_sim->rank);
-    MPI_Recv(tmpu, 4*N + 6*nx_all, MPI_FLOAT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        
-    // Copy the data into the full solution array
-    copy_u(tmpu, nx, ny, x0, y0, full_sim);
-   
-    // printf("r%d Freeing tmpu\n",full_sim->rank); 
-    free(tmpu);
-    // printf("r%d tmpu freed\n", full_sim->rank);
-}
-
-
-void gather_sol(central2d_t* sim, central2d_t* full_sim){
-	// printf("r%d Entering gather_sol\n",sim->rank);
-	if(sim->rank == 0){
-		// Copy sim into full_sim
-		copy_u(sim->u, sim->nx, sim->ny, sim->x0, sim->y0, full_sim);
-		
-		for(int ii = 1; ii < sim->world_size; ++ii){
-			recv_full_u(ii,full_sim); // Receive from all other nodes, synthesize into 
-		}
-		
-	}
-	else{
-		send_full_u(0,sim); // Send to node 0	
-	}
 }
 
 
@@ -261,7 +64,7 @@ int central2d_offset(central2d_t* sim, int k, int ix, int iy)
     int nx = sim->nx, ny = sim->ny, ng = sim->ng;
     int nx_all = nx + 2*ng;
     int ny_all = ny + 2*ng;
-    return (k*ny_all + (ng+iy))*nx_all + (ng+ix);
+    return (k*ny_all+(ng+iy))*nx_all+(ng+ix);
 }
 
 
@@ -281,121 +84,187 @@ int central2d_offset(central2d_t* sim, int k, int ix, int iy)
  */
 
 static inline
-void copy_subgrid(float* restrict dst, const float* restrict src,
-                  int nx, int ny, int stride_dst, int stride_src)
+void copy_subgrid(float* restrict dst,
+                  const float* restrict src,
+                  int nx, int ny, int stride)
 {
     for (int iy = 0; iy < ny; ++iy)
         for (int ix = 0; ix < nx; ++ix)
-            dst[iy*stride_dst+ix] = src[iy*stride_src+ix];
+            dst[iy*stride+ix] = src[iy*stride+ix];
 }
 
-/**
- * A drawing:
- *    Y - What is being communicated in the left/right step
- *    X - What is being communicated in the top/bottom step
- *    _____ _____ _____
- *   |     |     |     |
- *   |    .|.....|.    |
- *   |___:X|X_X_X|X:___|
- *   |   :Y|     |Y:   |
- *   |   :Y|     |Y:   |
- *   |___:Y|_____|Y:___|
- *   |   :X|X X X|X:   |
- *   |    .|.....|.    |
- *   |_____|_____|_____|
-**/
+static inline
+void copy_subgrid2(float* restrict dst,
+                   const float* restrict src,
+                   int nx, int ny,
+                   int dst_stride, int src_stride)
+{
+    for (int iy = 0; iy < ny; ++iy)
+        for (int ix = 0; ix < nx; ++ix)
+            dst[iy*dst_stride+ix] = src[iy*src_stride+ix];
+}
 
+void central2d_gather(central2d_t* full_sim, central2d_t* sim)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int nx = sim->nx;
+    int ny = sim->ny;
+    int ng = sim->ng;
+    int st = nx + 2*ng;
+    int nf = sim->nfield;
+    int nc = (nx + 2*ng) * (ny + 2*ng);
+    int N  = nf * nc;
+
+    float* tmpu;
+    if(rank == 0){
+        int full_nx = full_sim->nx;
+        int full_ny = full_sim->ny;
+        int full_ng = full_sim->ng;
+        int full_nf = full_sim->nfield;
+	int full_nc = (full_nx + 2*full_ng) * (full_ny + 2*full_ng);
+	int full_N  = full_nf * full_nc;
+	int size;
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+        tmpu = (float*) malloc(N * size * sizeof(float));
+    }
+
+    MPI_Gather(sim->u, N, MPI_FLOAT, tmpu, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+    if(rank == 0){
+        int full_nx = full_sim->nx;
+        int full_ny = full_sim->ny;
+        int full_ng = full_sim->ng;
+	int full_st = full_nx + 2*full_ng;
+        int world;
+	MPI_Comm_size(MPI_COMM_WORLD, &world);
+        for(int k = 0; k < nf; k++){
+            for(int i = 0; i < world; i++){
+                int ibx = i % sim->block_nx;
+		int iby = i / sim->block_nx;
+		int ix  = ibx * sim->nx;
+		int iy  = iby * sim->ny;
+                float* dst = full_sim->u + central2d_offset(full_sim, k, ix, iy);
+		float* src = tmpu + i*N + central2d_offset(sim, k, 0, 0);
+		copy_subgrid2(dst, src, nx, ny, full_st, st);
+            }
+        }
+    }
+
+    if(rank == 0)
+        free(tmpu);
+}
 
 void central2d_periodic(float* restrict u,
-                        int nx, int ny, int ng, int nfield,
-                        int rank, int neighbors[4], float* restrict u_comm)
+                        int nx, int ny, int ng,
+                        int block_nx, int block_ny,
+                        int block_x, int block_y, int nfield)
 {
-    int nx_all = nx + 2*ng;
-    int ny_all = ny + 2*ng;
-    int nc = nx_all * ny_all;
-    int N  = nfield * nc;
-    int N_lr = nfield * ng * ny;     // lr = left/right
-    int N_tb = nfield * ng * nx_all; // tb = top/bottom
+    int stride = nx + 2*ng;
+    int N = (nx + 2*ng) * (ny + 2*ng);
+    int dst_x, dst_y, dst_rank;
+    int src_x, src_y, src_rank;
+    float* sbuf;
+    float* rbuf;
 
-    int s   = nx_all; // s = stride
-    int s_lr = ng;
-    int s_tb = nx_all;
-    
-    int fs = (ny+2*ng)*s; // fs = field_stride
-    int fs_lr = ng*ny;
-    int fs_tb = ng*nx_all;
+    sbuf = (float*) malloc(ng * ny * nfield * sizeof(float));
+    rbuf = (float*) malloc(ng * ny * nfield * sizeof(float));
 
-    float* u_lr_send = u_comm;
-    float* u_lr_recv = u_comm + N_lr; 
-    float* u_tb_send = u_comm + 2*N_lr;
-    float* u_tb_recv = u_comm + 2*N_lr + N_tb;
+    // Send to right, receive from left
+    dst_x = (block_x + 1) % block_nx;
+    dst_y = block_y;
+    src_x = (block_x + block_nx - 1) % block_nx;
+    src_y = block_y;
+    dst_rank = dst_y*block_nx + dst_x;
+    src_rank = src_y*block_nx + src_x;
+    for(int i = 0; i < nfield; i++){
+        float* usrc = u + i*N + ng*stride + nx;
+        float* sbufi = sbuf + i*(ng*ny);
+        copy_subgrid2(sbufi, usrc, ng, ny, ng, stride);
+    }
+    MPI_Sendrecv(sbuf, nfield*(ny*ng), MPI_FLOAT, dst_rank, 0,
+                 rbuf, nfield*(ny*ng), MPI_FLOAT, src_rank, 0,
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for(int i = 0; i < nfield; i++){
+        float* udst = u + i*N + ng*stride;
+	float* rbufi = rbuf + i*(ng*ny);
+        copy_subgrid2(udst, rbufi, ng, ny, stride, ng);
+    }
 
-    float* u_l = u + ng*nx_all + ng; // Down ng rows, right ng columns
-    float* u_r = u + ng*nx_all + nx; // Down ng rows, right nx columns
-    float* u_b = u + ny*nx_all;      // Down ny rows
-    float* u_t = u + ng*nx_all;      // Down ng rows
-	
-    float* gu_l = u + ng*nx_all;         // Down ng rows (g = ghost)
-    float* gu_r = u + ng*nx_all + ng+nx; // Down ng rows, over ng+nx columns
-    float* gu_b = u + (ng+ny)*nx_all;    // Down ng+ny rows
-    float* gu_t = u;                     // The top is at the top!
+    // Send to left, receive from right
+    dst_x = (block_x + block_nx - 1) % block_nx;
+    dst_y = block_y;
+    src_x = (block_x + 1) % block_nx;
+    src_y = block_y;
+    dst_rank = dst_y*block_nx + dst_x;
+    src_rank = src_y*block_nx + src_x;
+    for(int i = 0; i < nfield; i++){
+        float* usrc = u + i*N + ng*stride + ng;
+        float* sbufi = sbuf + i*(ng*ny);
+        copy_subgrid2(sbufi, usrc, ng, ny, ng, stride);
+    }
+    MPI_Sendrecv(sbuf, nfield*(ny*ng), MPI_FLOAT, dst_rank, 0,
+                 rbuf, nfield*(ny*ng), MPI_FLOAT, src_rank, 0,
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for(int i = 0; i < nfield; i++){
+        float* udst = u + i*N + ng*stride + nx + ng;
+	float* rbufi = rbuf + i*(ng*ny);
+        copy_subgrid2(udst, rbufi, ng, ny, stride, ng);
+    }
 
-    int nx_lr = ng;
-    int ny_lr = ny;
-    int nx_tb = nx_all;
-    int ny_tb = ng;
+    free(sbuf);
+    free(rbuf);
 
+    sbuf = (float*) malloc(stride * ng * nfield * sizeof(float));
+    rbuf = (float*) malloc(stride * ng * nfield * sizeof(float));
 
-    // Commented version of send right, receive left
-	
-    // Fill u_lr_send with the data from the right side of u
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(u_lr_send + k*fs_lr, u_r + k*fs, nx_lr, ny_lr, s_lr, s);
+    // Send to bottom, receive from top
+    dst_x = block_x;
+    dst_y = (block_y + 1) % block_ny;
+    src_x = block_x;
+    src_y = (block_y + block_ny - 1) % block_ny;
+    dst_rank = dst_y*block_nx + dst_x;
+    src_rank = src_y*block_nx + src_x;
+    for(int i = 0; i < nfield; i++){
+        float* usrc = u + i*N + ny*stride;
+        float* sbufi = sbuf + i*(stride*ng);
+        copy_subgrid(sbufi, usrc, stride, ng, stride);
+    }
+    MPI_Sendrecv(sbuf, nfield*(stride*ng), MPI_FLOAT, dst_rank, 0,
+                 rbuf, nfield*(stride*ng), MPI_FLOAT, src_rank, 0,
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for(int i = 0; i < nfield; i++){
+        float* udst = u + i*N;
+        float* rbufi = rbuf + i*(stride*ng);
+        copy_subgrid(udst, rbufi, stride, ng, stride);
+    }
 
-    // Send right, receive left
-    MPI_Sendrecv( u_lr_send, N_lr, MPI_FLOAT, neighbors[1], 0,
-                  u_lr_recv, N_lr, MPI_FLOAT, neighbors[0], 0,
-                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+    // Send to top, receive from bottom
+    dst_x = block_x;
+    dst_y = (block_y + block_ny - 1) % block_ny;
+    src_x = block_x;
+    src_y = (block_y + 1) % block_ny;
+    dst_rank = dst_y*block_nx + dst_x;
+    src_rank = src_y*block_nx + src_x;
+    for(int i = 0; i < nfield; i++){
+        float* usrc = u + i*N + ng*stride;
+        float* sbufi = sbuf + i*(stride*ng);
+        copy_subgrid(sbufi, usrc, stride, ng, stride);
+    }
+    MPI_Sendrecv(sbuf, nfield*(stride*ng), MPI_FLOAT, dst_rank, 0,
+                 rbuf, nfield*(stride*ng), MPI_FLOAT, src_rank, 0,
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for(int i = 0; i < nfield; i++){
+        float* udst = u + i*N + (ny + ng)*stride;
+        float* rbufi = rbuf + i*(stride*ng);
+        copy_subgrid(udst, rbufi, stride, ng, stride);
+    }
 
-    // Fill the left side of u with the received data from u_lr_recv
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(gu_l + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
-    
-
-    // Send left, receive right
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(u_lr_send + k*fs_lr, u_l + k*fs, nx_lr, ny_lr, s_lr, s);
-
-    MPI_Sendrecv( u_lr_send, N_lr, MPI_FLOAT, neighbors[0], 0,
-                  u_lr_recv, N_lr, MPI_FLOAT, neighbors[1], 0,
-                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
-    for (int k = 0; k < nfield; ++k)
-	copy_subgrid(gu_r + k*fs, u_lr_recv + k*fs_lr, nx_lr, ny_lr, s, s_lr);
-    
-
-    // Send down, receive up
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(u_tb_send + k*fs_tb, u_b + k*fs, nx_tb, ny_tb, s_tb, s);
-    
-    MPI_Sendrecv( u_tb_send, N_tb, MPI_FLOAT, neighbors[2], 0,
-                  u_tb_recv, N_tb, MPI_FLOAT, neighbors[3], 0,
-                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(gu_t + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
-		
-    // Send up, receive down
-    for (int k = 0; k < nfield; ++k)
-        copy_subgrid(u_tb_send + k*fs_tb, u_t + k*fs, nx_tb, ny_tb, s_tb, s);
-    
-    MPI_Sendrecv( u_tb_send, N_tb, MPI_FLOAT, neighbors[3], 0,
-                  u_tb_recv, N_tb, MPI_FLOAT, neighbors[2], 0,
-                  MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
-    for (int k = 0; k < nfield; ++k)
-		copy_subgrid(gu_b + k*fs, u_tb_recv + k*fs_tb, nx_tb, ny_tb, s, s_tb);
+    free(sbuf);
+    free(rbuf);
 }
+
 
 /**
  * ### Derivatives with limiters
@@ -647,12 +516,13 @@ void central2d_step(float* restrict u, float* restrict v,
 static
 int central2d_xrun(float* restrict u, float* restrict v,
                    float* restrict scratch,
-                   float* restrict f, float* restrict g,
-                   float* restrict u_comm,
+                   float* restrict f,
+                   float* restrict g,
                    int nx, int ny, int ng,
+                   int block_nx, int block_ny,
+                   int block_x, int block_y,
                    int nfield, flux_t flux, speed_t speed,
-                   float tfinal, float dx, float dy, float cfl,
-                   int rank, int neighbors[4])
+                   float tfinal, float dx, float dy, float cfl)
 {
     int nstep = 0;
     int nx_all = nx + 2*ng;
@@ -661,23 +531,13 @@ int central2d_xrun(float* restrict u, float* restrict v,
     float t = 0;
     while (!done) {
         float cxy[2] = {1.0e-15f, 1.0e-15f};
-        // printf("r%d Sharing data w/ neighbors", rank);
-        // if(nstep == 0)
-        //     print_array(u,nx_all,ny_all,rank);
-	central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors, u_comm);
-        // if(nstep == 0)
-        //    print_array(u,nx_all,ny_all,rank);
-	// MPI_Barrier(MPI_COMM_WORLD);
-        // printf("r%d Data sharing received...\n", rank);
+        central2d_periodic(u, nx, ny, ng, block_nx, block_ny,
+                           block_x, block_y, nfield);
         speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
-        float dt_local = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
-        float dt;
-        
-        //printf("r%d Starting Allreduce\n",rank);
-        MPI_Allreduce(&dt_local, &dt, 1, 
-                      MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-        // printf("r%d Ending Allreduce, dt = %g, dt_local = %g\n", rank,dt,dt_local);
-        
+	//printf("cxy: %f %f\n", cxy[0], cxy[1]);
+        float my_dt = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
+	float dt;
+	MPI_Allreduce(&my_dt, &dt, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
         if (t + 2*dt >= tfinal) {
             dt = (tfinal-t)/2;
             done = true;
@@ -697,14 +557,13 @@ int central2d_xrun(float* restrict u, float* restrict v,
 }
 
 
-
-
 int central2d_run(central2d_t* sim, float tfinal)
 {
     return central2d_xrun(sim->u, sim->v, sim->scratch,
-                          sim->f, sim->g, sim->u_comm,
+                          sim->f, sim->g,
                           sim->nx, sim->ny, sim->ng,
+                          sim->block_nx, sim->block_ny,
+                          sim->block_x, sim->block_y,
                           sim->nfield, sim->flux, sim->speed,
-                          tfinal, sim->dx, sim->dy, sim->cfl,
-                          sim->rank, sim->neighbors);
+                          tfinal, sim->dx, sim->dy, sim->cfl);
 }

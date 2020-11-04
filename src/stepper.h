@@ -41,18 +41,12 @@ typedef struct central2d_t {
 
     int nfield;   // Number of components in system
     int nx, ny;   // Grid resolution in x/y (without ghost cells)
+    int block_nx, block_ny;
+    int block_x, block_y;
     int ng;       // Number of ghost cells
     float dx, dy; // Cell width in x/y
     float cfl;    // Max allowed CFL number
 
-	int rank;     // MPI rank
-	int world_size; // MPI world size
-	int NX, NY;   // Number of processors in x/y
-	int x0, y0;   // Cell offset in x/y, (xi = x0 + i, yj = y0 + j)
-
-	// Locations of all neighbors
-	int neighbors[4]; // the four neighbor rank: left, right, top, bottom
-    
     // Flux and speed functions
     flux_t flux;
     speed_t speed;
@@ -63,7 +57,6 @@ typedef struct central2d_t {
     float* f;
     float* g;
     float* scratch;
-    float* u_comm; // Used for communicating
 
 } central2d_t;
 
@@ -74,21 +67,12 @@ typedef struct central2d_t {
  * functions.
  *
  */
-central2d_t* central2d_init(float w, float h, int nx_total, int ny_total,
-                            int ng, int NX, int NY,
+central2d_t* central2d_init(float w, float h, int nx, int ny,
+                            int block_nx, int block_ny,
+                            int block_x, int block_y,
                             int nfield, flux_t flux, speed_t speed,
                             float cfl);
 void central2d_free(central2d_t* sim);
-
-
-/**
- * MAX: We need a couple other functions for central2d_t to create the
- * 'full_sim', which contains the information from all processors for
- * printing.
- * 
- */
-void copy_basic_info(int nx, int ny, central2d_t* sim, central2d_t* full_sim); // Fill everything but u,v,f,g,scratch
-void gather_sol(central2d_t* sim,central2d_t* full_sim); // Fill u,v,f,g from all processors
 
 /**
  * For initialization and for reporting on the solution, it's helpful
@@ -126,10 +110,11 @@ int central2d_run(central2d_t* sim, float tfinal);
  * for applying the BCs.
  *
  */
-//void central2d_periodic(float* u, int nx, int ny, int ng, int nfield);
-void central2d_periodic( float* restrict u, 
-                         int nx, int ny, int ng, int nfield, 
-                         int rank, int neighbors[4], float* restrict u_comm );
+void central2d_periodic(float* u, int nx, int ny, int ng,
+                        int block_nx, int block_ny,
+                        int block_x, int block_y, int nfield);
+
+void central2d_gather(central2d_t* full_sim, central2d_t* sim);
 
 //ldoc off
 #endif /* STEPPER_H */
