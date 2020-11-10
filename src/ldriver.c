@@ -234,17 +234,19 @@ int run_sim(lua_State* L)
     central2d_t* full_sim = malloc(sizeof(central2d_t));
     copy_basic_info(nx_total,ny_total,sim,full_sim);
 //    printf("Ran copy_basic_info\n");
-	FILE* viz = viz_open(fname, full_sim, vskip);
 	
     gather_sol(sim,full_sim); // Fill in info of full_sim for the rank=0 node
+    FILE* viz;
     if(sim->rank == 0){
-		solution_check(full_sim);
+        viz = viz_open(fname, full_sim, vskip);
+        solution_check(full_sim);
         viz_frame(viz, full_sim, vskip);
-	}
+    }
     
     MPI_Barrier(MPI_COMM_WORLD);
 
-    double tcompute = 0;
+    double tcompute  = 0;
+    int    tot_steps = 0;
     
     for (int i = 0; i < frames; ++i) {
         
@@ -263,24 +265,25 @@ int run_sim(lua_State* L)
         int nstep = central2d_run(sim, ftime, n_tstep);
         double elapsed = 0;
 #endif 
-		// Same as before the loop
-		gather_sol(sim,full_sim); 
-		if(sim->rank == 0){
-			solution_check(full_sim);
-			viz_frame(viz, full_sim, vskip);
-            tcompute += elapsed;
+        // Same as before the loop
+        gather_sol(sim,full_sim); 
+        if(sim->rank == 0){
+            solution_check(full_sim);
+            viz_frame(viz, full_sim, vskip);
+            tcompute  += elapsed;
+            tot_steps += nstep;
             printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
-		}
+        }
 	
 //        tcompute += elapsed;
 //        printf("  Time: %e (%e for %d steps)\n", elapsed, elapsed/nstep, nstep);
     }
 //    printf("Total compute time: %e\n", tcompute);
     
-	if(sim->rank == 0){
+    if(sim->rank == 0){
         printf("Total compute time: %e\n", tcompute);
-		viz_close(viz); // We have only opened a file for the rank=0 node 
-	}/**/
+        viz_close(viz); // We have only opened a file for the rank=0 node 
+    }
     central2d_free(sim);
     central2d_free(full_sim); // Dunno if this has to be edited
     return 0;
