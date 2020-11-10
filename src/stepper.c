@@ -652,7 +652,7 @@ int central2d_xrun(float* restrict u, float* restrict v,
                    int nx, int ny, int ng,
                    int nfield, flux_t flux, speed_t speed,
                    float tfinal, float dx, float dy, float cfl,
-                   int rank, int neighbors[4])
+                   int rank, int neighbors[4], int n_tstep)
 {
     int nstep = 0;
     int nx_all = nx + 2*ng;
@@ -669,29 +669,32 @@ int central2d_xrun(float* restrict u, float* restrict v,
         //    print_array(u,nx_all,ny_all,rank);
 	// MPI_Barrier(MPI_COMM_WORLD);
         // printf("r%d Data sharing received...\n", rank);
-        speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
-        float dt_local = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
-        float dt;
+        for(int i = 0; i < n_tstep; i++){
+            speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
+            float dt_local = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
+            float dt;
         
-        //printf("r%d Starting Allreduce\n",rank);
-        MPI_Allreduce(&dt_local, &dt, 1, 
-                      MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-        // printf("r%d Ending Allreduce, dt = %g, dt_local = %g\n", rank,dt,dt_local);
+            //printf("r%d Starting Allreduce\n",rank);
+            MPI_Allreduce(&dt_local, &dt, 1, 
+                          MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+            // printf("r%d Ending Allreduce, dt = %g, dt_local = %g\n", rank,dt,dt_local);
         
-        if (t + 2*dt >= tfinal) {
-            dt = (tfinal-t)/2;
-            done = true;
+//        for(int i = 0; i < n_tstep; i++){
+            if (t + 2*dt*n_tstep >= tfinal) {
+                dt = (tfinal-t)/(2*n_tstep);
+                done = true;
+            }
+            central2d_step(u, v, scratch, f, g,
+                           0, nx+4, ny+4, ng-2,
+                           nfield, flux, speed,
+                           dt, dx, dy);
+            central2d_step(v, u, scratch, f, g,
+                           1, nx, ny, ng,
+                           nfield, flux, speed,
+                           dt, dx, dy);
+            t += 2*dt;
+            nstep += 2;
         }
-        central2d_step(u, v, scratch, f, g,
-                       0, nx+4, ny+4, ng-2,
-                       nfield, flux, speed,
-                       dt, dx, dy);
-        central2d_step(v, u, scratch, f, g,
-                       1, nx, ny, ng,
-                       nfield, flux, speed,
-                       dt, dx, dy);
-        t += 2*dt;
-        nstep += 2;
     }
     return nstep;
 }
@@ -699,12 +702,12 @@ int central2d_xrun(float* restrict u, float* restrict v,
 
 
 
-int central2d_run(central2d_t* sim, float tfinal)
+int central2d_run(central2d_t* sim, float tfinal, int n_tstep)
 {
     return central2d_xrun(sim->u, sim->v, sim->scratch,
                           sim->f, sim->g, sim->u_comm,
                           sim->nx, sim->ny, sim->ng,
                           sim->nfield, sim->flux, sim->speed,
                           tfinal, sim->dx, sim->dy, sim->cfl,
-                          sim->rank, sim->neighbors);
+                          sim->rank, sim->neighbors, n_tstep);
 }
