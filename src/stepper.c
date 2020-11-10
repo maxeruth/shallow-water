@@ -660,16 +660,17 @@ int central2d_xrun(float* restrict u, float* restrict v,
     bool done = false;
     float t = 0;
     while (!done) {
-        float cxy[2] = {1.0e-15f, 1.0e-15f};
+        
         // printf("r%d Sharing data w/ neighbors", rank);
         // if(nstep == 0)
         //     print_array(u,nx_all,ny_all,rank);
-	central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors, u_comm);
+		central2d_periodic(u, nx, ny, ng, nfield, rank, neighbors, u_comm);
         // if(nstep == 0)
         //    print_array(u,nx_all,ny_all,rank);
 	// MPI_Barrier(MPI_COMM_WORLD);
         // printf("r%d Data sharing received...\n", rank);
         for(int i = 0; i < n_tstep; i++){
+			float cxy[2] = {1.0e-15f, 1.0e-15f};
             speed(cxy, u, nx_all * ny_all, nx_all * ny_all);
             float dt_local = cfl / fmaxf(cxy[0]/dx, cxy[1]/dy);
             float dt;

@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[margin = 1 in]{geometry}
+
+
+
+\title{CS5220 Project 2: Shallow Water Equations}
+\author{Nick Cebry, Jiahao Li, Max Ruth}
+\date{October 5, 2020}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This could probably be just a paragraph summarizing the assignment
+
+\section{The Algorithm}
+The general process:
+\begin{enumerate}
+	\item Used MPI
+	\item Transfer Boundary information to left and right neighbors, the top and bottom (transferring the corners to top and bottom)
+	\item Transfer boundary information every $\tau$ steps
+	\item Transfer time step information every $\tau$ steps as well (This is what is being used in the model anyway)
+\end{enumerate}
+The model
+\begin{enumerate}
+	\item Four different contributions to batches of time steps
+	\item Give predictions for how strong scaling, weak scaling, and optimal time batching look like.
+\end{enumerate}
+
+\section{Scaling and Profiling Results}
+Figure this out!
+
+
+
+\section{Conclusion}
+What we would add for next time:
+\begin{enumerate}
+	\item More careful cache performance
+	\item Tuning number of ghost cells to block size
+	\item Different sized domains/initial conditions
+	\item Deal with the fact that not all processors are the same
+	\item Think about the tradeoff between a conservative time step and communicating every step (how uneven are the time steps really?)
+\end{enumerate}
+
+
+\end{document}
