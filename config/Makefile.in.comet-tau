@@ -1,0 +1,19 @@
+# C compiler and flags
+CC=tau_cc.sh
+CFLAGS=-g
+
+# Optimization flags
+OPTFLAGS=-O3 -march=native -qopenmp -ffast-math
+CFLAGS+=$(OPTFLAGS) -std=c11 -tau_options=-optCompInst
+CXXFLAGS+=$(OPTFLAGS)
+
+# Python
+PYTHON=python
+#PYTHON=/share/apps/anaconda3/2020.07/bin/python
+
+# Lua front-end
+LUA_CFLAGS=-I$(HOME)/local/include
+LUA_LIBS=-L$(HOME)/local/lib -llua -lm
+
+# Other necessary libraries
+LIBS=-qopenmp
