@@ -1,0 +1,1357 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     50300,       1349]
+NotebookOptionsPosition[     43108,       1228]
+NotebookOutlinePosition[     43483,       1244]
+CellTagsIndexPosition[     43440,       1241]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[" A Model For the Time Complexity of the Time Stepper w/ MPI", "Title",
+ CellChangeTimes->{{3.8140033809857244`*^9, 3.8140034166318045`*^9}, {
+  3.814003456392948*^9, 3.814003478107872*^9}, {3.8140049216000924`*^9, 
+  3.8140049284001474`*^9}},ExpressionUUID->"b3cc8739-4ecc-49d2-8fa4-\
+d8b8393dc01c"],
+
+Cell["Max Ruth", "Subtitle",
+ CellChangeTimes->{{3.8140049349285874`*^9, 
+  3.81400493743929*^9}},ExpressionUUID->"aaa67ee1-9b39-4f59-bf60-\
+85b2ee484016"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"$Assumptions", " ", "=", " ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"\[Tau]", "\[Element]", "Integers"}], ",", " ", 
+      RowBox[{"\[Tau]", ">", "0"}]}], "}"}]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+    "Assumptions", " ", "about", " ", "the", " ", "variables", " ", "we", " ",
+      "are", " ", "working", " ", 
+     RowBox[{"with", ".", " ", "In"}], " ", "particular"}], ",", " ", 
+    RowBox[{
+    "we", " ", "want", " ", "any", " ", "Sums", " ", "to", " ", "evaluate", 
+     " ", "correctly"}]}], "*)"}], " "}]], "Input",
+ CellChangeTimes->{{3.8140076559404716`*^9, 3.814007690446547*^9}, {
+  3.8140077481846294`*^9, 
+  3.8140078263055563`*^9}},ExpressionUUID->"fe080ccc-582b-45bb-86bb-\
+7fa3103b7b80"],
+
+Cell[CellGroupData[{
+
+Cell["Description of the problem", "Chapter",
+ CellChangeTimes->{{3.8140049402569156`*^9, 
+  3.8140049589756374`*^9}},ExpressionUUID->"916bf8c3-4c10-4bd0-8f48-\
+9937568b25c7"],
+
+Cell["\<\
+There are a few parameters that we have to keep track of in this problem. \
+They are:\
+\>", "Text",
+ CellChangeTimes->{{3.8140050320482097`*^9, 3.814005032400991*^9}, {
+  3.8140051630569515`*^9, 
+  3.814005184594612*^9}},ExpressionUUID->"d10bcf8e-8a14-4ad9-b6a8-\
+efeeea790c58"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"Clear", "[", 
+   RowBox[{
+   "Nx", ",", "Ny", ",", " ", "L", ",", " ", "M", ",", " ", "T", ",", 
+    "\[Tau]", ",", "CFL", ",", "h", ",", "u", ",", "v", ",", "\[Alpha]", ",", 
+    "\[Beta]", ",", "\[Gamma]", ",", "\[Delta]", ",", "Nt"}], "]"}], " ", 
+  "\[IndentingNewLine]", 
+  RowBox[{"(*", "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{
+    "Enter", " ", "values", " ", "for", " ", "the", " ", "parameters", " ", 
+     "if", " ", "you", " ", "would", " ", "like", " ", "below"}], ",", " ", 
+    RowBox[{"for", " ", "a", " ", 
+     RowBox[{"simplified", "/", "more"}], " ", "realistic", " ", "version", 
+     " ", "of", " ", "the", " ", 
+     RowBox[{"model", ".", " ", "However"}]}], ",", " ", 
+    RowBox[{"for", " ", "now"}], ",", " ", 
+    RowBox[{
+    "these", " ", "will", " ", "remain", " ", "as", " ", "undefined", " ", 
+     RowBox[{"constants", "."}]}]}], "\[IndentingNewLine]", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{"Nx", ";", " ", "Ny", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Number", " ", "of", " ", "processors", " ", "in", " ", "the", " ", "x", 
+    " ", "and", " ", "y", " ", "directions"}], " ", "*)"}], 
+  "\[IndentingNewLine]", "L", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Length", " ", "of", " ", "the", " ", "x", " ", "or", " ", "y", " ", 
+    "direction", " ", "of", " ", "the", " ", "domain", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"it", "'"}], "s", " ", 
+      RowBox[{"square", "!"}]}], ")"}]}], " ", "*)"}], "\[IndentingNewLine]", 
+  "M", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Number", " ", "of", " ", "grid", " ", "points", " ", "the", " ", "x", " ",
+     "or", " ", "y", " ", "direction"}], " ", "*)"}], "\[IndentingNewLine]", 
+  "T", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Total", " ", "time", " ", "for", " ", "which", " ", "the", " ", "problem",
+     " ", "is", " ", "run"}], " ", "*)"}], "\[IndentingNewLine]", "\[Tau]", 
+  ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Number", " ", "of", " ", "time", " ", "steps", " ", "taken", " ", "per", 
+    " ", "MPI", " ", "Communication"}], " ", "*)"}], "\[IndentingNewLine]", 
+  "CFL", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"The", " ", "CFL", " ", "Condition"}], " ", "*)"}], "  ", 
+  "\[IndentingNewLine]", "h", ";", " ", "u", ";", " ", "v", ";", " ", 
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"The", " ", "things", " ", "we", " ", "are", " ", "solving", " ", 
+     RowBox[{"for", ":", " ", "height"}]}], ",", " ", 
+    RowBox[{"x", " ", "velocity"}], ",", " ", 
+    RowBox[{"y", " ", "velocity"}]}], " ", "*)"}], "\[IndentingNewLine]", 
+  "\[Alpha]", ";", " ", "\[Beta]", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{"Coefficients", " ", "in", " ", "the", " ", "\[Alpha]"}], "-", 
+    RowBox[{
+    "\[Beta]", " ", "model", " ", "of", " ", "communication", " ", "in", " ", 
+     RowBox[{"MPI", ".", " ", "Assume"}], " ", "\[Beta]", " ", "has", " ", 
+     "units", " ", "that", " ", "work", " ", "with", " ", "floats", " ", 
+     "naturally"}]}], " ", "*)"}], "\[IndentingNewLine]", "\[Gamma]", ";", 
+  " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+    "The", " ", "time", " ", "required", " ", "for", " ", "one", " ", 
+     "predict"}], "-", 
+    RowBox[{
+    "correct", " ", "time", " ", "step", " ", "at", " ", "a", " ", "single", 
+     " ", "point"}]}], " ", "*)"}], "\[IndentingNewLine]", "\[Delta]", ";", 
+  " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "The", " ", "time", " ", "to", " ", "calculate", " ", "the", " ", "speed", 
+    " ", "at", " ", "a", " ", "single", " ", "point"}], " ", "*)"}], 
+  "\[IndentingNewLine]"}]}], "Input",
+ CellChangeTimes->{{3.814005188305241*^9, 3.8140052945150933`*^9}, {
+  3.814005330546153*^9, 3.8140053307221575`*^9}, {3.8140053681160793`*^9, 
+  3.814005417059496*^9}, {3.814005474677054*^9, 3.8140055265332527`*^9}, {
+  3.8140060017669144`*^9, 3.814006052279587*^9}, {3.814006152871681*^9, 
+  3.8140061956723795`*^9}, {3.814006908139596*^9, 3.814006940059823*^9}, {
+  3.814007846099846*^9, 3.814007870286786*^9}, {3.814008555973509*^9, 
+  3.814008568498667*^9}, {3.8140117130409126`*^9, 3.8140117274951363`*^9}, {
+  3.8140184180521193`*^9, 
+  3.81401850744833*^9}},ExpressionUUID->"08c85f4c-4ab1-40b8-aa9f-\
+41a4a7bcb2c2"],
+
+Cell["\<\
+Derived from these parameters, we can find a few important things:\
+\>", "Text",
+ CellChangeTimes->{{3.814006056744107*^9, 3.814006067319619*^9}, {
+  3.814006147255329*^9, 
+  3.8140061504070616`*^9}},ExpressionUUID->"d5777760-ee7b-4542-bde4-\
+3be6799fca06"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"dx", " ", "=", " ", 
+    FractionBox["L", "M"]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "The", " ", "distance", " ", "between", " ", "grid", " ", "points"}], " ", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"dt", " ", "=", " ", 
+    RowBox[{
+     FractionBox["CFL", 
+      RowBox[{"Max", "[", 
+       RowBox[{"u", ",", "v"}], "]"}]], " ", "dx"}]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"The", " ", "time", " ", "step", " ", 
+    RowBox[{"(", 
+     RowBox[{"I", " ", 
+      RowBox[{"think", ".", " ", 
+       RowBox[{"It", "'"}]}], "s", " ", "something", " ", "like", " ", 
+      "this"}], ")"}]}], " ", "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"mx", " ", "=", " ", 
+    FractionBox["M", "Nx"]}], ";", " ", 
+   RowBox[{"my", " ", "=", " ", 
+    FractionBox["M", "Ny"]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Number", " ", "of", " ", "grid", " ", "points", " ", "belonging", " ", 
+    "to", " ", "each", " ", "cell", " ", 
+    RowBox[{"(", 
+     RowBox[{"ignoring", " ", "any", " ", "integer", " ", "nonsense"}], 
+     ")"}]}], " ", "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"mg", " ", "=", " ", 
+    RowBox[{"4", " ", "\[Tau]"}]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Number", " ", "of", " ", "ghost", " ", "grid", " ", "cells", " ", "on", 
+    " ", "one", " ", "side", " ", "in", " ", "one", " ", "dimension"}], " ", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Nt", ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{"Number", " ", "of", " ", "time", " ", "steps", " ", 
+     RowBox[{"taken", ".", " ", "This"}], " ", 
+     RowBox[{"isn", "'"}], "t", " ", "know", " ", "a", " ", "priori"}], ",", 
+    " ", 
+    RowBox[{
+    "but", " ", "it", " ", "is", " ", "independent", " ", "of", " ", "the", 
+     " ", "number", " ", "of", " ", "processors", " ", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"assuming", " ", "dx", " ", "is", " ", "fixed"}], ")"}], ".", 
+      " ", "However"}]}], ",", " ", 
+    RowBox[{
+    "it", " ", "does", " ", "depend", " ", "on", " ", "the", " ", "CFL", " ", 
+     "condition", " ", "and", " ", "dx"}], ",", " ", 
+    RowBox[{
+    "so", " ", "it", " ", "is", " ", "in", " ", "the", " ", "\"\<derived\>\"",
+      " ", 
+     RowBox[{"category", "."}]}]}], " ", 
+   "*)"}]}], "\[IndentingNewLine]"}], "Input",
+ CellChangeTimes->{{3.814006209370015*^9, 3.814006236793394*^9}, {
+  3.8140067464429607`*^9, 3.814006767260336*^9}, {3.8140069464700603`*^9, 
+  3.8140069641183863`*^9}, {3.8140070222725897`*^9, 3.814007044684151*^9}, {
+  3.814007122158248*^9, 3.8140071574576645`*^9}, {3.8140074721576686`*^9, 
+  3.8140075715070615`*^9}, {3.814010437276507*^9, 
+  3.814010507772745*^9}},ExpressionUUID->"e45a01c5-ead5-49ff-8c95-\
+2f47c6c2fe84"],
+
+Cell[TextData[{
+ "The algorithm that we are performing goes like this: \n\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"for", " ", "i"}], " ", "=", " ", 
+    RowBox[{"1", ":", 
+     RowBox[{"Nt", "/", "\[Tau]"}]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "acec754b-b198-4d8e-81b3-ae438a04e32c"],
+ "\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\t", 
+    RowBox[{
+     RowBox[{"Communicate", " ", "ghost", " ", "cells"}], 
+     "\[IndentingNewLine]", "\t", 
+     RowBox[{"Find", " ", "local", " ", "time", " ", "step"}], 
+     "\[IndentingNewLine]", "\t", 
+     RowBox[{
+     "Allreduce", " ", "for", " ", "global", " ", "time", " ", "step"}], 
+     "\[IndentingNewLine]", "\t", 
+     RowBox[{
+     "Performe", " ", "the", " ", "time", " ", "step", " ", "operation", " ", 
+      "2", "\[Tau]", " ", "times"}]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "f209ee77-5c7f-4c76-954f-79184b544188"],
+ "\n\nTo analyze the complexity of the algorithm, we need to think about the \
+cost of each of these operations individually"
+}], "Text",
+ CellChangeTimes->{{3.814007616448065*^9, 3.8140076493591433`*^9}, {
+  3.814007962416031*^9, 3.814007986400176*^9}, {3.8140080574262915`*^9, 
+  3.8140082697638855`*^9}, {3.8140108363238306`*^9, 
+  3.8140108520981674`*^9}},ExpressionUUID->"6eb7ce1a-dfff-4a9b-9692-\
+6bd8ed734047"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Finding Time Step Costs", "Chapter",
+ CellChangeTimes->{{3.8140107132632933`*^9, 
+  3.814010722622671*^9}},ExpressionUUID->"53f336a3-34f5-48fe-865b-\
+bba1d6cb31f7"],
+
+Cell[TextData[{
+ "Here, we calculate the cost of doing a block of time steps ",
+ StyleBox["per processor",
+  FontWeight->"Bold"],
+ ". "
+}], "Text",
+ CellChangeTimes->{{3.814012818643138*^9, 3.8140128210904408`*^9}, {
+  3.814012920313241*^9, 
+  3.8140129566646805`*^9}},ExpressionUUID->"ced66a5c-ebff-476b-88d0-\
+fed057bc5db0"],
+
+Cell[CellGroupData[{
+
+Cell["1. Ghost Cell Communication Cost", "Section",
+ CellChangeTimes->{{3.8140082830099645`*^9, 
+  3.8140082948190165`*^9}},ExpressionUUID->"cb06a66c-5a06-441a-973b-\
+907bf7c0a747"],
+
+Cell["The variable we are interested in is:", "Text",
+ CellChangeTimes->{{3.81400830985808*^9, 
+  3.8140083359725866`*^9}},ExpressionUUID->"12af67e9-0d75-439a-917c-\
+a44fd18144fb"],
+
+Cell[BoxData[
+ RowBox[{"cg", ";", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "Cost", " ", "of", " ", "ghost", " ", "cell", " ", "communication"}], " ", 
+   "*)"}]}]], "Input",
+ CellChangeTimes->{{3.81400833771922*^9, 
+  3.814008348790279*^9}},ExpressionUUID->"f962cd4b-139f-44ca-8d58-\
+13aaa82eaa07"],
+
+Cell[TextData[{
+ "To perform the ghost cell communication, we have to communicate with all \
+four neighbors. The first two communications are to the left and right, and \
+communicate blocks of size ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"ng", " ", "mx"}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "ad9a8348-061c-42b1-9344-f9398463ff99"],
+ ". The last two communications to the top and bottom have to include the \
+corners as well, so they communicate blocks of size ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"ng", " ", 
+    RowBox[{"(", 
+     RowBox[{"my", " ", "+", " ", "ng"}], ")"}]}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "0aa80515-86df-4ac1-a5be-a0de64946ae6"],
+ ". Plugging this into the \[Alpha]-\[Beta] model, we have"
+}], "Text",
+ CellChangeTimes->{{3.8140083560556097`*^9, 
+  3.8140085249029264`*^9}},ExpressionUUID->"407eebc3-8d23-4315-a326-\
+e28fac1389cd"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cg", " ", "=", " ", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"2", 
+     RowBox[{"(", 
+      RowBox[{"\[Alpha]", " ", "+", " ", 
+       RowBox[{"\[Beta]", " ", "mg", " ", "mx"}]}], ")"}]}], " ", "+", " ", 
+    RowBox[{"2", 
+     RowBox[{"(", 
+      RowBox[{"\[Alpha]", " ", "+", " ", 
+       RowBox[{"\[Beta]", " ", "mg", " ", 
+        RowBox[{"(", 
+         RowBox[{"mg", " ", "+", " ", "my"}], ")"}]}]}], ")"}]}]}], "//", 
+   RowBox[{
+    RowBox[{"Collect", "[", 
+     RowBox[{"#", ",", 
+      RowBox[{"{", 
+       RowBox[{"\[Alpha]", ",", "\[Beta]"}], "}"}], ",", "FullSimplify"}], 
+     "]"}], "&"}]}]}]], "Input",
+ CellChangeTimes->{{3.8140085319923525`*^9, 3.8140085383293066`*^9}, {
+  3.814008589746728*^9, 3.8140086578300123`*^9}, {3.814010943152508*^9, 
+  3.8140109459496365`*^9}},
+ CellLabel->"In[27]:=",ExpressionUUID->"94f239c4-31e8-4273-ae58-1a427cb46dc9"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"4", " ", "\[Alpha]"}], "+", 
+  RowBox[{"8", " ", "\[Beta]", " ", "\[Tau]", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"M", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox["1", "Nx"], "+", 
+        FractionBox["1", "Ny"]}], ")"}]}], "+", 
+     RowBox[{"4", " ", "\[Tau]"}]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{{3.8140086361962566`*^9, 3.814008643593723*^9}, 
+   3.814010947127784*^9},
+ CellLabel->"Out[27]=",ExpressionUUID->"69413049-5a6c-451a-9d59-40ac87d73b72"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["2. Find Local Time Step", "Section",
+ CellChangeTimes->{{3.8140086625530868`*^9, 
+  3.814008671589121*^9}},ExpressionUUID->"d3373a10-e282-4710-82c0-\
+fb91e9acf50f"],
+
+Cell["The cost of this is simply", "Text",
+ CellChangeTimes->{{3.8140086750441585`*^9, 3.814008707588341*^9}, {
+  3.814008857702091*^9, 3.814008862422183*^9}, {3.8140092190319195`*^9, 
+  3.8140092385820484`*^9}, {3.814011734803089*^9, 
+  3.8140117436507797`*^9}},ExpressionUUID->"d6708af4-71a6-490d-84dd-\
+32cf81a77461"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"clts", " ", "=", " ", 
+   RowBox[{"\[Delta]", " ", "mx", " ", "my"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.814011761147231*^9, 3.8140117825174823`*^9}, {
+  3.8140118529139156`*^9, 3.814011857060919*^9}},
+ CellLabel->"In[43]:=",ExpressionUUID->"9f41d6d6-be38-4ceb-81a5-1cadfb4555e3"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["3. Allreduce for Global Time Step", "Section",
+ CellChangeTimes->{{3.8140092408541975`*^9, 
+  3.8140092544721813`*^9}},ExpressionUUID->"7ec7f4b4-afcb-43e8-96bb-\
+3488a5892701"],
+
+Cell["\<\
+This is the term that has the worst scaling with the number of processors. \
+Assuming a reasonable algorithm, this should be done via some sort of \
+divide-and-conquer, giving an approximate cost\
+\>", "Text",
+ CellChangeTimes->{{3.814009256600147*^9, 3.814009263096063*^9}, {
+  3.8140097673066144`*^9, 3.8140097676566963`*^9}, {3.814010543676008*^9, 
+  3.8140106151662498`*^9}, {3.8140118667380104`*^9, 
+  3.8140118773309083`*^9}},ExpressionUUID->"a7dd3d0f-3080-4895-9cdb-\
+8981899aa5a2"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"car", " ", "=", " ", 
+   RowBox[{"\[Alpha]", " ", 
+    RowBox[{"Log", "[", 
+     RowBox[{"Nx", " ", "Ny"}], "]"}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.814010617507292*^9, 3.814010667807293*^9}, {
+  3.814011888859061*^9, 3.8140118889628687`*^9}},
+ CellLabel->"In[45]:=",ExpressionUUID->"c1d30e6f-a620-4005-95eb-6ca1c7c5967b"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["4. Perform the time-step operation 2\[Tau] times", "Section",
+ CellChangeTimes->{{3.814009800347274*^9, 
+  3.8140098260755396`*^9}},ExpressionUUID->"b233040f-01d5-4c3a-9b9a-\
+bc15ae6b5350"],
+
+Cell["\<\
+Using the cost to predict-correct for a single node \[Gamma], we can find the \
+cost to calculate a layer to be\
+\>", "Text",
+ CellChangeTimes->{{3.814009830299522*^9, 
+  3.814009891643607*^9}},ExpressionUUID->"34014ce5-c5e3-4b72-a571-\
+ed9f12d271c1"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"clayer", " ", "=", " ", 
+   RowBox[{"\[Gamma]", 
+    RowBox[{"(", 
+     RowBox[{"mx", " ", "+", " ", 
+      RowBox[{"2", "k"}]}], ")"}], 
+    RowBox[{"(", 
+     RowBox[{"my", "+", 
+      RowBox[{"2", "k"}]}], ")"}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.8140098766230793`*^9, 3.814009925564803*^9}, {
+  3.8140101183341136`*^9, 3.8140101193392487`*^9}, {3.814011787651452*^9, 
+  3.8140117893467827`*^9}},
+ CellLabel->"In[37]:=",ExpressionUUID->"1ea92c06-f770-4252-be7c-860a3730ec8a"],
+
+Cell[TextData[{
+ "where ",
+ Cell[BoxData[
+  FormBox["k", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "8f71bd9f-3038-46d3-9639-b22294454eff"],
+ " is the number of ghost cells that are being calculated for the next step. \
+That is, the first step after communicating, we have to calculate the value \
+at ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"mg", "-", "2"}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "3a263923-ae95-47aa-988c-a86edd9a4125"],
+ " ghost cells in each direction. After that step, we calculate ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"mg", "-", "4"}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "4a209349-1c1d-4c47-b66c-a03173865566"],
+ ", and so on until the final step where we calculate ",
+ Cell[BoxData[
+  FormBox["0", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "90ea9711-3b4b-4fb3-84fe-7917d49bb8ee"],
+ " ghost cells. In total, this becomes the sum"
+}], "Text",
+ CellChangeTimes->{{3.814009929946353*^9, 
+  3.814010062204892*^9}},ExpressionUUID->"c59ccb5e-adaa-40cd-b832-\
+07c8dfcf6a4a"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cts", " ", "=", " ", 
+  RowBox[{
+   RowBox[{"Sum", "[", 
+    RowBox[{"clayer", ",", 
+     RowBox[{"{", 
+      RowBox[{"k", ",", "0", ",", 
+       RowBox[{"mg", "-", "2"}], ",", "2"}], "}"}]}], "]"}], "//", 
+   RowBox[{
+    RowBox[{"Collect", "[", 
+     RowBox[{"#", ",", "\[Tau]", ",", "Simplify"}], "]"}], "&"}]}]}]], "Input",
+ CellChangeTimes->{{3.81401006527992*^9, 3.8140100790530057`*^9}, {
+  3.81401014070027*^9, 3.814010237787422*^9}},
+ CellLabel->"In[38]:=",ExpressionUUID->"b7f4fd34-c3eb-4834-9c61-b149f5940e2c"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"2", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"3", " ", 
+       SuperscriptBox["M", "2"]}], "+", 
+      RowBox[{"8", " ", "Nx", " ", "Ny"}], "-", 
+      RowBox[{"6", " ", "M", " ", 
+       RowBox[{"(", 
+        RowBox[{"Nx", "+", "Ny"}], ")"}]}]}], ")"}], " ", "\[Gamma]", " ", 
+    "\[Tau]"}], 
+   RowBox[{"3", " ", "Nx", " ", "Ny"}]], "+", 
+  RowBox[{"8", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"-", "4"}], "+", 
+     RowBox[{"M", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox["1", "Nx"], "+", 
+        FractionBox["1", "Ny"]}], ")"}]}]}], ")"}], " ", "\[Gamma]", " ", 
+   SuperscriptBox["\[Tau]", "2"]}], "+", 
+  FractionBox[
+   RowBox[{"128", " ", "\[Gamma]", " ", 
+    SuperscriptBox["\[Tau]", "3"]}], "3"]}]], "Output",
+ CellChangeTimes->{{3.8140101649761143`*^9, 3.814010238379979*^9}, 
+   3.814011803423705*^9},
+ CellLabel->"Out[38]=",ExpressionUUID->"09ec0bc8-bd40-4cfa-9b97-e14c998df7ac"]
+}, Open  ]],
+
+Cell[TextData[{
+ "As an example, if we communicate every time step (",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\[Tau]", "=", "1"}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "2b5145e4-4a8f-4714-b910-203ba0198fb7"],
+ "), we have: "
+}], "Text",
+ CellChangeTimes->{{3.8140103299568343`*^9, 
+  3.814010381613305*^9}},ExpressionUUID->"c3dbb2c6-dbe1-460e-81ce-\
+6043d718a41e"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"cts", "/.", 
+   RowBox[{"\[Tau]", "\[Rule]", "1"}]}], "//", "FullSimplify"}]], "Input",
+ CellChangeTimes->{{3.814010270159803*^9, 3.8140102782047925`*^9}},
+ CellLabel->"In[39]:=",ExpressionUUID->"6144ff4b-9397-491f-b999-abd0cc92c766"],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"2", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["M", "2"], "+", 
+     RowBox[{"8", " ", "Nx", " ", "Ny"}], "+", 
+     RowBox[{"2", " ", "M", " ", 
+      RowBox[{"(", 
+       RowBox[{"Nx", "+", "Ny"}], ")"}]}]}], ")"}], " ", "\[Gamma]"}], 
+  RowBox[{"Nx", " ", "Ny"}]]], "Output",
+ CellChangeTimes->{{3.814010273295926*^9, 3.814010278463785*^9}, 
+   3.814011805679921*^9},
+ CellLabel->"Out[39]=",ExpressionUUID->"7d6503de-d7e1-483d-b889-adab4f16309a"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Finding Total Cost and Average Cost per Time Step", "Chapter",
+ CellChangeTimes->{{3.814010728075444*^9, 3.8140107451956406`*^9}, {
+  3.8140108091820107`*^9, 
+  3.8140108132141266`*^9}},ExpressionUUID->"193cbf03-b7d0-47e7-be85-\
+6c989bf1a8a7"],
+
+Cell["\<\
+The total cost of the algorithm comes to multiplying the cost per time step \
+block by the number of blocks, i.e.\
+\>", "Text",
+ CellChangeTimes->{{3.814010818724066*^9, 3.814010825070134*^9}, {
+  3.8140108589430666`*^9, 
+  3.8140109000304303`*^9}},ExpressionUUID->"40db55c8-8ec5-49bb-922c-\
+69031d01f2fc"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Ctotal", " ", "=", " ", 
+  RowBox[{
+   RowBox[{
+    FractionBox["Nt", "\[Tau]"], 
+    RowBox[{"(", 
+     RowBox[{
+     "cg", " ", "+", " ", "clts", " ", "+", " ", "car", " ", "+", " ", 
+      "cts"}], ")"}]}], "//", 
+   RowBox[{
+    RowBox[{"Collect", "[", 
+     RowBox[{"#", ",", "\[Tau]", ",", "FullSimplify"}], "]"}], 
+    "&"}]}]}]], "Input",
+ CellChangeTimes->{{3.8140108673890104`*^9, 3.814010922097149*^9}, {
+  3.8140109590735846`*^9, 3.814010980861809*^9}, {3.814011899771181*^9, 
+  3.814011911251622*^9}},
+ CellLabel->"In[46]:=",ExpressionUUID->"b65230be-a540-422f-8c1f-81f9c7f8df8d"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"2", " ", "Nt", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"6", " ", "M", " ", 
+       RowBox[{"(", 
+        RowBox[{"Nx", "+", "Ny"}], ")"}], " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", " ", "\[Beta]"}], "-", "\[Gamma]"}], ")"}]}], "+", 
+      RowBox[{"3", " ", 
+       SuperscriptBox["M", "2"], " ", "\[Gamma]"}], "+", 
+      RowBox[{"8", " ", "Nx", " ", "Ny", " ", "\[Gamma]"}]}], ")"}]}], 
+   RowBox[{"3", " ", "Nx", " ", "Ny"}]], "+", 
+  RowBox[{"Nt", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"32", " ", "\[Beta]"}], "+", 
+     RowBox[{"8", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "4"}], "+", 
+        RowBox[{"M", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           FractionBox["1", "Nx"], "+", 
+           FractionBox["1", "Ny"]}], ")"}]}]}], ")"}], " ", "\[Gamma]"}]}], 
+    ")"}], " ", "\[Tau]"}], "+", 
+  RowBox[{
+   FractionBox["128", "3"], " ", "Nt", " ", "\[Gamma]", " ", 
+   SuperscriptBox["\[Tau]", "2"]}], "+", 
+  FractionBox[
+   RowBox[{"Nt", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"4", " ", "\[Alpha]"}], "+", 
+      FractionBox[
+       RowBox[{
+        SuperscriptBox["M", "2"], " ", "\[Delta]"}], 
+       RowBox[{"Nx", " ", "Ny"}]], "+", 
+      RowBox[{"\[Alpha]", " ", 
+       RowBox[{"Log", "[", 
+        RowBox[{"Nx", " ", "Ny"}], "]"}]}]}], ")"}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{{3.8140109656319413`*^9, 3.8140109811262827`*^9}, 
+   3.81401181696373*^9, 3.814011911708953*^9},
+ CellLabel->"Out[46]=",ExpressionUUID->"756ffe16-7604-413a-82ad-ad166701e1be"]
+}, Open  ]],
+
+Cell["The average cost per time step would then simply be", "Text",
+ CellChangeTimes->{{3.814011118955117*^9, 
+  3.814011132605237*^9}},ExpressionUUID->"27e63013-9e79-41b9-ad5f-\
+a542f76a21b1"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cavg", " ", "=", " ", 
+  RowBox[{
+   FractionBox["Ctotal", "Nt"], "//", 
+   RowBox[{
+    RowBox[{"Collect", "[", 
+     RowBox[{"#", ",", "\[Tau]", ",", "FullSimplify"}], "]"}], 
+    "&"}]}]}]], "Input",
+ CellChangeTimes->{{3.8140111333792768`*^9, 3.8140111438222985`*^9}},
+ CellLabel->"In[47]:=",ExpressionUUID->"1f2c7510-c5b6-467b-bdc5-155870d5098f"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"2", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"6", " ", "M", " ", 
+       RowBox[{"(", 
+        RowBox[{"Nx", "+", "Ny"}], ")"}], " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", " ", "\[Beta]"}], "-", "\[Gamma]"}], ")"}]}], "+", 
+      RowBox[{"3", " ", 
+       SuperscriptBox["M", "2"], " ", "\[Gamma]"}], "+", 
+      RowBox[{"8", " ", "Nx", " ", "Ny", " ", "\[Gamma]"}]}], ")"}]}], 
+   RowBox[{"3", " ", "Nx", " ", "Ny"}]], "+", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"32", " ", "\[Beta]"}], "+", 
+     RowBox[{"8", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "4"}], "+", 
+        RowBox[{"M", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           FractionBox["1", "Nx"], "+", 
+           FractionBox["1", "Ny"]}], ")"}]}]}], ")"}], " ", "\[Gamma]"}]}], 
+    ")"}], " ", "\[Tau]"}], "+", 
+  FractionBox[
+   RowBox[{"128", " ", "\[Gamma]", " ", 
+    SuperscriptBox["\[Tau]", "2"]}], "3"], "+", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"4", " ", "\[Alpha]"}], "+", 
+    FractionBox[
+     RowBox[{
+      SuperscriptBox["M", "2"], " ", "\[Delta]"}], 
+     RowBox[{"Nx", " ", "Ny"}]], "+", 
+    RowBox[{"\[Alpha]", " ", 
+     RowBox[{"Log", "[", 
+      RowBox[{"Nx", " ", "Ny"}], "]"}]}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{{3.814011139095315*^9, 3.814011144254642*^9}, 
+   3.8140118189546413`*^9, 3.8140119421783*^9},
+ CellLabel->"Out[47]=",ExpressionUUID->"9839f721-9d9e-4554-8380-e0e916c4de19"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Analysis", "Chapter",
+ CellChangeTimes->{{3.8140112310874996`*^9, 
+  3.814011231969675*^9}},ExpressionUUID->"fba24dc3-d996-4583-9e37-\
+c28c5e291d83"],
+
+Cell[CellGroupData[{
+
+Cell["What is the best \[Tau]?", "Section",
+ CellChangeTimes->{{3.8140121110157685`*^9, 
+  3.814012115079321*^9}},ExpressionUUID->"2be281d9-b3d9-4bb2-ba55-\
+c1fd85c6a815"],
+
+Cell["\<\
+It seems that we should probably ignore terms that are constant in \[Tau], as \
+these cannot be tuned away via \[Tau]. So,\
+\>", "Text",
+ CellChangeTimes->{{3.814011341819556*^9, 3.8140113661590233`*^9}, {
+   3.814011499058221*^9, 3.814011510111689*^9}, 3.814011583363783*^9, {
+   3.814012124950194*^9, 
+   3.8140121265201793`*^9}},ExpressionUUID->"68868f0c-ea21-4f30-a193-\
+651767892d6c"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cavganalysis", " ", "=", " ", 
+  RowBox[{
+   RowBox[{"cavg", " ", "-", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{
+        SubscriptBox["\[PartialD]", "\[Tau]"], 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"\[Tau]", " ", "cavg"}], "//", "FullSimplify"}], ")"}]}], 
+       ")"}], "/.", 
+      RowBox[{"\[Tau]", "\[Rule]", "0"}]}], ")"}]}], "//", 
+   RowBox[{
+    RowBox[{"Collect", "[", 
+     RowBox[{"#", ",", "\[Tau]", ",", "FullSimplify"}], "]"}], 
+    "&"}]}]}]], "Input",
+ CellChangeTimes->{{3.814011511350597*^9, 3.8140115239885235`*^9}, {
+  3.8140115912059326`*^9, 3.814011634707488*^9}},
+ CellLabel->"In[48]:=",ExpressionUUID->"fa334fdb-124e-4581-96b3-58f64594a573"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"32", " ", "\[Beta]"}], "+", 
+     RowBox[{"8", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "4"}], "+", 
+        RowBox[{"M", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           FractionBox["1", "Nx"], "+", 
+           FractionBox["1", "Ny"]}], ")"}]}]}], ")"}], " ", "\[Gamma]"}]}], 
+    ")"}], " ", "\[Tau]"}], "+", 
+  FractionBox[
+   RowBox[{"128", " ", "\[Gamma]", " ", 
+    SuperscriptBox["\[Tau]", "2"]}], "3"], "+", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"4", " ", "\[Alpha]"}], "+", 
+    FractionBox[
+     RowBox[{
+      SuperscriptBox["M", "2"], " ", "\[Delta]"}], 
+     RowBox[{"Nx", " ", "Ny"}]], "+", 
+    RowBox[{"\[Alpha]", " ", 
+     RowBox[{"Log", "[", 
+      RowBox[{"Nx", " ", "Ny"}], "]"}]}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{
+  3.8140115242889767`*^9, {3.814011616292371*^9, 3.814011635588685*^9}, 
+   3.8140118334010677`*^9, 3.8140119453415585`*^9},
+ CellLabel->"Out[48]=",ExpressionUUID->"c1e3e243-9563-46c0-8775-0ad971c2802d"]
+}, Open  ]],
+
+Cell["Translating this big-O notation, we have", "Text",
+ CellChangeTimes->{{3.814011952097768*^9, 3.814011953804527*^9}, {
+  3.8140121006946764`*^9, 3.814012136374732*^9}, {3.8140121679739275`*^9, 
+  3.8140121993341227`*^9}},ExpressionUUID->"4d4f1abb-81a0-4c01-9816-\
+1ad4924a4b6c"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"cavg\[Tau]BigO", " ", "=", " ", 
+   RowBox[{
+    RowBox[{"O", "[", 
+     SuperscriptBox["\[Tau]", "2"], "]"}], " ", "+", " ", 
+    RowBox[{"O", "[", 
+     FractionBox["1", "\[Tau]"], "]"}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.8140122007791033`*^9, 3.814012226441348*^9}},
+ CellLabel->"In[50]:=",ExpressionUUID->"ee165442-021a-4d95-96ad-c7d761db9d98"],
+
+Cell[TextData[{
+ "Because the coefficients of both of these terms are positive, there must be \
+some optimal \[Tau] that minimizes ",
+ Cell[BoxData[
+  FormBox["cavganalysis", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "24e6d923-5c09-4e34-b842-4e82fa762c87"],
+ ". The balance is essentially against latency type costs (i.e. terms with \
+\[Alpha] in them and the time to calculate the time step everywhere in the \
+block) and the extra work required to calculate in the ghost cells (scaling \
+for big \[Tau] in the ",
+ Cell[BoxData[
+  FormBox[
+   SuperscriptBox["\[Tau]", "2"], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "1ba1c13f-5530-446c-b7d8-a94711ee4650"],
+ " term). The actual minimum will depend on all of these parameters however, \
+so it is not so pretty to calculate."
+}], "Text",
+ CellChangeTimes->{{3.8140122362284365`*^9, 
+  3.8140124908931837`*^9}},ExpressionUUID->"59e27bd2-ac3a-4a9a-8110-\
+31ff0f9dbf45"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Weak Scaling", "Section",
+ CellChangeTimes->{{3.8140124953509045`*^9, 
+  3.8140124978159437`*^9}},ExpressionUUID->"ee8474cc-9646-43e5-8491-\
+0f4ea72babd6"],
+
+Cell[TextData[{
+ "For the scaling problems, let\[CloseCurlyQuote]s assume that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"Nx", "=", "Ny"}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "71b28f2e-06cc-43af-8216-e48c7e3a2878"],
+ ", \[Tau] is fixed, and that we only care about the cost of a time step (and \
+not of the total cost). That is,"
+}], "Text",
+ CellChangeTimes->{{3.814012511112023*^9, 
+  3.8140125692409706`*^9}},ExpressionUUID->"e59cb7ce-d7c4-424d-aa40-\
+670a3c8dd1b8"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cscaling", " ", "=", " ", 
+  RowBox[{"cavg", "/.", 
+   RowBox[{"Ny", "\[Rule]", "Nx"}]}]}]], "Input",
+ CellChangeTimes->{{3.814012570509331*^9, 3.814012608473584*^9}},
+ CellLabel->"In[52]:=",ExpressionUUID->"447cfa1f-1cc6-47f8-9730-90c01000ddad"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"2", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"12", " ", "M", " ", "Nx", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", " ", "\[Beta]"}], "-", "\[Gamma]"}], ")"}]}], "+", 
+      RowBox[{"3", " ", 
+       SuperscriptBox["M", "2"], " ", "\[Gamma]"}], "+", 
+      RowBox[{"8", " ", 
+       SuperscriptBox["Nx", "2"], " ", "\[Gamma]"}]}], ")"}]}], 
+   RowBox[{"3", " ", 
+    SuperscriptBox["Nx", "2"]}]], "+", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"32", " ", "\[Beta]"}], "+", 
+     RowBox[{"8", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "4"}], "+", 
+        FractionBox[
+         RowBox[{"2", " ", "M"}], "Nx"]}], ")"}], " ", "\[Gamma]"}]}], ")"}], 
+   " ", "\[Tau]"}], "+", 
+  FractionBox[
+   RowBox[{"128", " ", "\[Gamma]", " ", 
+    SuperscriptBox["\[Tau]", "2"]}], "3"], "+", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"4", " ", "\[Alpha]"}], "+", 
+    FractionBox[
+     RowBox[{
+      SuperscriptBox["M", "2"], " ", "\[Delta]"}], 
+     SuperscriptBox["Nx", "2"]], "+", 
+    RowBox[{"\[Alpha]", " ", 
+     RowBox[{"Log", "[", 
+      SuperscriptBox["Nx", "2"], "]"}]}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{{3.8140125980128927`*^9, 3.8140126087338543`*^9}},
+ CellLabel->"Out[52]=",ExpressionUUID->"328de9ba-d595-4452-84d5-c4cefb212846"]
+}, Open  ]],
+
+Cell[TextData[{
+ "For weak scaling, we go one step farther, and assume that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"M", " ", "=", " ", 
+    RowBox[{"M0", " ", "Nx"}]}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "7f62150b-0403-4b87-9293-55bac08a9f5c"],
+ ":"
+}], "Text",
+ CellChangeTimes->{{3.8140126117206807`*^9, 
+  3.814012640795614*^9}},ExpressionUUID->"c02d701a-83f5-4b41-94bb-\
+f052e5483e9c"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cweak", " ", "=", " ", 
+  RowBox[{
+   RowBox[{"cscaling", "/.", 
+    RowBox[{"M", "\[Rule]", 
+     RowBox[{"M0", " ", "Nx"}]}]}], "//", "FullSimplify"}]}]], "Input",
+ CellChangeTimes->{{3.814012632989699*^9, 3.8140126537368336`*^9}},
+ CellLabel->"In[54]:=",ExpressionUUID->"11e15347-b7dd-4694-a685-afa018a61057"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"4", " ", "\[Alpha]"}], "\[Tau]"], "+", 
+  RowBox[{"8", " ", "M0", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"2", " ", "\[Beta]"}], "-", "\[Gamma]", "+", 
+     RowBox[{"2", " ", "\[Gamma]", " ", "\[Tau]"}]}], ")"}]}], "+", 
+  FractionBox[
+   RowBox[{
+    SuperscriptBox["M0", "2"], " ", 
+    RowBox[{"(", 
+     RowBox[{"\[Delta]", "+", 
+      RowBox[{"2", " ", "\[Gamma]", " ", "\[Tau]"}]}], ")"}]}], "\[Tau]"], 
+  "+", 
+  RowBox[{
+   FractionBox["16", "3"], " ", 
+   RowBox[{"(", 
+    RowBox[{"\[Gamma]", "+", 
+     RowBox[{"6", " ", "\[Beta]", " ", "\[Tau]"}], "-", 
+     RowBox[{"6", " ", "\[Gamma]", " ", "\[Tau]"}], "+", 
+     RowBox[{"8", " ", "\[Gamma]", " ", 
+      SuperscriptBox["\[Tau]", "2"]}]}], ")"}]}], "+", 
+  FractionBox[
+   RowBox[{"\[Alpha]", " ", 
+    RowBox[{"Log", "[", 
+     SuperscriptBox["Nx", "2"], "]"}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{{3.8140126491647277`*^9, 3.8140126544847364`*^9}},
+ CellLabel->"Out[54]=",ExpressionUUID->"ae267e17-a6ef-495d-9927-8426fc801625"]
+}, Open  ]],
+
+Cell[TextData[{
+ "We see that the cost per processor actually scales with the number of \
+processors, but only logarithmically due to the Allreduce. The \
+\[OpenCurlyDoubleQuote]flop rate\[CloseCurlyDoubleQuote] for all processors (",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    FractionBox[
+     RowBox[{"Total", " ", "work", " ", "of", " ", "time", " ", "step"}], 
+     RowBox[{
+     "compute", " ", "time", " ", "per", " ", "time", " ", "step", " "}]], 
+    "=", " ", 
+    RowBox[{"K", " ", 
+     FractionBox[
+      SuperscriptBox["M", "2"], "cweak"]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "677fb7c6-c193-4a0d-8190-c9b9f69f8fb3"],
+ ") has the form"
+}], "Text",
+ CellChangeTimes->{{3.8140127253296404`*^9, 3.814012730952382*^9}, {
+  3.8140127699775133`*^9, 3.8140128135931053`*^9}, {3.814016609405514*^9, 
+  3.8140166105885024`*^9}, {3.8140166798699665`*^9, 3.8140167199332232`*^9}, {
+  3.8140167856625013`*^9, 3.81401689825563*^9}, {3.8140177631712275`*^9, 
+  3.814017780934376*^9}},ExpressionUUID->"22670e79-e909-4723-9f81-\
+e15d980b03cf"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"FRweakBigO", " ", "=", " ", 
+   FractionBox[
+    RowBox[{"O", "[", 
+     SuperscriptBox["Nx", "2"], "]"}], 
+    RowBox[{"1", "+", " ", 
+     RowBox[{"O", "[", 
+      RowBox[{"Log", "[", 
+       SuperscriptBox["Nx", "2"], "]"}], "]"}], " "}]]}], ";"}]], "Input",
+ CellChangeTimes->{{3.8140169007771425`*^9, 3.8140169873132877`*^9}, {
+  3.814017178448304*^9, 3.8140171996033354`*^9}, {3.8140174956340914`*^9, 
+  3.814017497588778*^9}, {3.8140176541678133`*^9, 3.814017698372627*^9}},
+ CellLabel->"In[63]:=",ExpressionUUID->"0d4d051f-c615-4508-a1b4-c25c56d37a22"],
+
+Cell[TextData[{
+ "This is increasing with ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "a48b5a35-899d-4ca3-a610-2adcfa4a8007"],
+ " for all ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "d761f964-9460-4ec2-a4b4-463d3d76a2cc"],
+ " still, so the optimal number of processors in weak scaling is still \
+unbounded."
+}], "Text",
+ CellChangeTimes->{{3.8140169906500096`*^9, 
+  3.8140170412659993`*^9}},ExpressionUUID->"3818ffb0-65fe-463c-a823-\
+b7a75a58bb19"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Strong Scaling", "Section",
+ CellChangeTimes->{{3.8140167222672462`*^9, 
+  3.814016724637286*^9}},ExpressionUUID->"dc630118-b326-494e-84d4-\
+2f8d1af181f3"],
+
+Cell[TextData[{
+ "In this case, we assume instead that ",
+ Cell[BoxData[
+  FormBox["M", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "506d3286-0155-4339-82a0-12d6e083e62d"],
+ " is independent of ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "716959f7-89a6-4987-8453-15865727c8a9"],
+ ". Collecting by ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "7499c513-23d8-42d7-b381-bf165b82e8af"],
+ ", the strong scaling cost for a single processor is"
+}], "Text",
+ CellChangeTimes->{{3.814016742969491*^9, 3.8140167484142814`*^9}, {
+  3.8140170620959253`*^9, 
+  3.8140171048943806`*^9}},ExpressionUUID->"fd0884b2-1c5e-4b06-882a-\
+467ba8f0fd3b"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"cscaling", " ", "//", " ", 
+  RowBox[{
+   RowBox[{"Collect", "[", 
+    RowBox[{"#", ",", "Nx", ",", "FullSimplify"}], "]"}], "&"}]}]], "Input",
+ CellChangeTimes->{{3.814017108437127*^9, 3.8140171263522463`*^9}},
+ CellLabel->"In[56]:=",ExpressionUUID->"f2b08ab0-a69a-45dd-a056-710af7df039e"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox[
+   RowBox[{"4", " ", "\[Alpha]"}], "\[Tau]"], "+", 
+  RowBox[{"32", " ", "\[Beta]", " ", "\[Tau]"}], "+", 
+  FractionBox[
+   RowBox[{
+    SuperscriptBox["M", "2"], " ", 
+    RowBox[{"(", 
+     RowBox[{"\[Delta]", "+", 
+      RowBox[{"2", " ", "\[Gamma]", " ", "\[Tau]"}]}], ")"}]}], 
+   RowBox[{
+    SuperscriptBox["Nx", "2"], " ", "\[Tau]"}]], "+", 
+  RowBox[{
+   FractionBox["16", "3"], " ", "\[Gamma]", " ", 
+   RowBox[{"(", 
+    RowBox[{"1", "-", 
+     RowBox[{"6", " ", "\[Tau]"}], "+", 
+     RowBox[{"8", " ", 
+      SuperscriptBox["\[Tau]", "2"]}]}], ")"}]}], "+", 
+  FractionBox[
+   RowBox[{"8", " ", "M", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"2", " ", "\[Beta]"}], "+", 
+      RowBox[{"\[Gamma]", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"-", "1"}], "+", 
+         RowBox[{"2", " ", "\[Tau]"}]}], ")"}]}]}], ")"}]}], "Nx"], "+", 
+  FractionBox[
+   RowBox[{"\[Alpha]", " ", 
+    RowBox[{"Log", "[", 
+     SuperscriptBox["Nx", "2"], "]"}]}], "\[Tau]"]}]], "Output",
+ CellChangeTimes->{3.8140171268234067`*^9},
+ CellLabel->"Out[56]=",ExpressionUUID->"275d4dd0-1883-4368-9046-594bbab3054d"]
+}, Open  ]],
+
+Cell["In Big-O notation, we see that", "Text",
+ CellChangeTimes->{{3.8140174088020535`*^9, 3.8140174170717335`*^9}, {
+  3.814017475010062*^9, 3.814017480161937*^9}, {3.814018304596523*^9, 
+  3.814018310753809*^9}},ExpressionUUID->"efc1efab-2350-4141-9b87-\
+54f292681c9b"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"cscalingBigO", " ", "=", " ", 
+   RowBox[{
+    RowBox[{"O", "[", 
+     FractionBox["1", 
+      SuperscriptBox["Nx", "2"]], "]"}], " ", "+", " ", 
+    RowBox[{"O", "[", 
+     RowBox[{"Log", "[", 
+      SuperscriptBox["Nx", "2"], "]"}], "]"}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.81401741893462*^9, 3.8140174364871655`*^9}, 
+   3.8140175203940916`*^9, {3.814017704034721*^9, 3.8140177072413416`*^9}},
+ CellLabel->"In[65]:=",ExpressionUUID->"5e2d0d0a-7d93-476d-ab73-02fa0fa94c8f"],
+
+Cell[TextData[{
+ "That is, for small ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "6f5aa186-c210-4980-b181-69e3a2da8406"],
+ ", the cost is dominated by time stepping, whereas for large (huge) Nx, the \
+cost is dominated by Allreduce communication costs. Similarly, for the \
+\[OpenCurlyDoubleQuote]flop rate\[CloseCurlyDoubleQuote] with strong scaling, \
+we find that"
+}], "Text",
+ CellChangeTimes->{{3.814017536155815*^9, 3.8140175520963407`*^9}, {
+  3.8140179372039804`*^9, 
+  3.814018002934935*^9}},ExpressionUUID->"23c622c9-40ce-44a4-aebf-\
+d67d8b95bafe"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"FRstrongBigO", " ", "=", " ", 
+   FractionBox[
+    RowBox[{"O", "[", 
+     SuperscriptBox["Nx", "2"], "]"}], 
+    RowBox[{"1", " ", "+", " ", 
+     RowBox[{"O", "[", 
+      RowBox[{
+       RowBox[{"Log", "[", 
+        SuperscriptBox["Nx", "2"], "]"}], 
+       SuperscriptBox["Nx", "2"]}], "]"}]}]]}], ";"}]], "Input",
+ CellChangeTimes->{{3.8140175552148705`*^9, 3.8140176496391096`*^9}, 
+   3.814017716778159*^9},
+ CellLabel->"In[67]:=",ExpressionUUID->"9440b92c-7d4f-476d-bd95-784064c26f8d"],
+
+Cell[TextData[{
+ "This expression will have a minimum - i.e. there is some amount of \
+processors at which the code will actually get ",
+ StyleBox["slower",
+  FontSlant->"Italic"],
+ ". However, even in the absence of the Allreduce step, this will still \
+converge to a constant flop rate for large ",
+ Cell[BoxData[
+  FormBox["Nx", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "ce023fb9-5f61-4ccb-8366-7851fc6f5f07"],
+ ", dominated by the constant term in ",
+ Cell[BoxData[
+  FormBox["cscaling", TraditionalForm]],
+  FormatType->"TraditionalForm",ExpressionUUID->
+  "33029d72-e420-4f5f-ad89-6b1c6456911e"],
+ " above. This is because, regardless of the number of points belonging to a \
+given processor, it still has to calculate the ghost cells, which has a \
+finite lower bound of required work per processor per time step. The constant \
+term is likely going to be the dominant term in any calculation we do \
+(latency seems to be generally negligible). "
+}], "Text",
+ CellChangeTimes->{{3.814017796547368*^9, 3.8140178425475283`*^9}, {
+  3.814018067781537*^9, 3.814018216950162*^9}, {3.814018347364781*^9, 
+  3.814018370919772*^9}},ExpressionUUID->"55e65ad1-50cf-4320-ae55-\
+08f4bb54a08b"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{1920, 997},
+WindowMargins->{{Automatic, 1912}, {Automatic, -8}},
+Magnification:>1.5 Inherited,
+FrontEndVersion->"12.0 for Microsoft Windows (64-bit) (April 8, 2019)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 305, 4, 146, "Title",ExpressionUUID->"b3cc8739-4ecc-49d2-8fa4-d8b8393dc01c"],
+Cell[888, 28, 155, 3, 78, "Subtitle",ExpressionUUID->"aaa67ee1-9b39-4f59-bf60-85b2ee484016"],
+Cell[1046, 33, 787, 20, 73, "Input",ExpressionUUID->"fe080ccc-582b-45bb-86bb-7fa3103b7b80"],
+Cell[CellGroupData[{
+Cell[1858, 57, 175, 3, 102, "Chapter",ExpressionUUID->"916bf8c3-4c10-4bd0-8f48-9937568b25c7"],
+Cell[2036, 62, 288, 7, 52, "Text",ExpressionUUID->"d10bcf8e-8a14-4ad9-b6a8-efeeea790c58"],
+Cell[2327, 71, 4270, 94, 479, "Input",ExpressionUUID->"08c85f4c-4ab1-40b8-aa9f-41a4a7bcb2c2"],
+Cell[6600, 167, 267, 6, 52, "Text",ExpressionUUID->"d5777760-ee7b-4542-bde4-3be6799fca06"],
+Cell[6870, 175, 2864, 74, 319, "Input",ExpressionUUID->"e45a01c5-ead5-49ff-8c95-2f47c6c2fe84"],
+Cell[9737, 251, 1379, 34, 323, "Text",ExpressionUUID->"6eb7ce1a-dfff-4a9b-9692-6bd8ed734047"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[11153, 290, 170, 3, 102, "Chapter",ExpressionUUID->"53f336a3-34f5-48fe-865b-bba1d6cb31f7"],
+Cell[11326, 295, 326, 9, 52, "Text",ExpressionUUID->"ced66a5c-ebff-476b-88d0-fed057bc5db0"],
+Cell[CellGroupData[{
+Cell[11677, 308, 181, 3, 99, "Section",ExpressionUUID->"cb06a66c-5a06-441a-973b-907bf7c0a747"],
+Cell[11861, 313, 180, 3, 52, "Text",ExpressionUUID->"12af67e9-0d75-439a-917c-a44fd18144fb"],
+Cell[12044, 318, 300, 8, 43, "Input",ExpressionUUID->"f962cd4b-139f-44ca-8d58-13aaa82eaa07"],
+Cell[12347, 328, 929, 22, 119, "Text",ExpressionUUID->"407eebc3-8d23-4315-a326-e28fac1389cd"],
+Cell[CellGroupData[{
+Cell[13301, 354, 887, 23, 43, "Input",ExpressionUUID->"94f239c4-31e8-4273-ae58-1a427cb46dc9"],
+Cell[14191, 379, 524, 14, 73, "Output",ExpressionUUID->"69413049-5a6c-451a-9d59-40ac87d73b72"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[14764, 399, 170, 3, 99, "Section",ExpressionUUID->"d3373a10-e282-4710-82c0-fb91e9acf50f"],
+Cell[14937, 404, 320, 5, 52, "Text",ExpressionUUID->"d6708af4-71a6-490d-84dd-32cf81a77461"],
+Cell[15260, 411, 321, 6, 43, "Input",ExpressionUUID->"9f41d6d6-be38-4ceb-81a5-1cadfb4555e3"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[15618, 422, 182, 3, 99, "Section",ExpressionUUID->"7ec7f4b4-afcb-43e8-96bb-3488a5892701"],
+Cell[15803, 427, 499, 9, 86, "Text",ExpressionUUID->"a7dd3d0f-3080-4895-9cdb-8981899aa5a2"],
+Cell[16305, 438, 366, 8, 43, "Input",ExpressionUUID->"c1d30e6f-a620-4005-95eb-6ca1c7c5967b"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[16708, 451, 195, 3, 99, "Section",ExpressionUUID->"b233040f-01d5-4c3a-9b9a-bc15ae6b5350"],
+Cell[16906, 456, 261, 6, 52, "Text",ExpressionUUID->"34014ce5-c5e3-4b72-a571-ed9f12d271c1"],
+Cell[17170, 464, 522, 13, 43, "Input",ExpressionUUID->"1ea92c06-f770-4252-be7c-860a3730ec8a"],
+Cell[17695, 479, 1113, 29, 86, "Text",ExpressionUUID->"c59ccb5e-adaa-40cd-b832-07c8dfcf6a4a"],
+Cell[CellGroupData[{
+Cell[18833, 512, 545, 13, 43, "Input",ExpressionUUID->"b7f4fd34-c3eb-4834-9c61-b149f5940e2c"],
+Cell[19381, 527, 985, 29, 81, "Output",ExpressionUUID->"09ec0bc8-bd40-4cfa-9b97-e14c998df7ac"]
+}, Open  ]],
+Cell[20381, 559, 396, 11, 52, "Text",ExpressionUUID->"c3dbb2c6-dbe1-460e-81ce-6043d718a41e"],
+Cell[CellGroupData[{
+Cell[20802, 574, 269, 5, 43, "Input",ExpressionUUID->"6144ff4b-9397-491f-b999-abd0cc92c766"],
+Cell[21074, 581, 501, 13, 81, "Output",ExpressionUUID->"7d6503de-d7e1-483d-b889-adab4f16309a"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[21636, 601, 249, 4, 102, "Chapter",ExpressionUUID->"193cbf03-b7d0-47e7-be85-6c989bf1a8a7"],
+Cell[21888, 607, 316, 7, 52, "Text",ExpressionUUID->"40db55c8-8ec5-49bb-922c-69031d01f2fc"],
+Cell[CellGroupData[{
+Cell[22229, 618, 617, 16, 70, "Input",ExpressionUUID->"b65230be-a540-422f-8c1f-81f9c7f8df8d"],
+Cell[22849, 636, 1625, 47, 92, "Output",ExpressionUUID->"756ffe16-7604-413a-82ad-ad166701e1be"]
+}, Open  ]],
+Cell[24489, 686, 193, 3, 52, "Text",ExpressionUUID->"27e63013-9e79-41b9-ad5f-a542f76a21b1"],
+Cell[CellGroupData[{
+Cell[24707, 693, 375, 9, 71, "Input",ExpressionUUID->"1f2c7510-c5b6-467b-bdc5-155870d5098f"],
+Cell[25085, 704, 1522, 45, 92, "Output",ExpressionUUID->"9839f721-9d9e-4554-8380-e0e916c4de19"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[26656, 755, 155, 3, 102, "Chapter",ExpressionUUID->"fba24dc3-d996-4583-9e37-c28c5e291d83"],
+Cell[CellGroupData[{
+Cell[26836, 762, 171, 3, 99, "Section",ExpressionUUID->"2be281d9-b3d9-4bb2-ba55-c1fd85c6a815"],
+Cell[27010, 767, 399, 8, 52, "Text",ExpressionUUID->"68868f0c-ea21-4f30-a193-651767892d6c"],
+Cell[CellGroupData[{
+Cell[27434, 779, 742, 20, 43, "Input",ExpressionUUID->"fa334fdb-124e-4581-96b3-58f64594a573"],
+Cell[28179, 801, 1066, 32, 92, "Output",ExpressionUUID->"c1e3e243-9563-46c0-8775-0ad971c2802d"]
+}, Open  ]],
+Cell[29260, 836, 283, 4, 52, "Text",ExpressionUUID->"4d4f1abb-81a0-4c01-9816-1ad4924a4b6c"],
+Cell[29546, 842, 392, 9, 70, "Input",ExpressionUUID->"ee165442-021a-4d95-96ad-c7d761db9d98"],
+Cell[29941, 853, 972, 21, 119, "Text",ExpressionUUID->"59e27bd2-ac3a-4a9a-8110-31ff0f9dbf45"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[30950, 879, 161, 3, 99, "Section",ExpressionUUID->"ee8474cc-9646-43e5-8491-0f4ea72babd6"],
+Cell[31114, 884, 502, 12, 52, "Text",ExpressionUUID->"e59cb7ce-d7c4-424d-aa40-670a3c8dd1b8"],
+Cell[CellGroupData[{
+Cell[31641, 900, 270, 5, 43, "Input",ExpressionUUID->"447cfa1f-1cc6-47f8-9730-90c01000ddad"],
+Cell[31914, 907, 1359, 41, 89, "Output",ExpressionUUID->"328de9ba-d595-4452-84d5-c4cefb212846"]
+}, Open  ]],
+Cell[33288, 951, 425, 12, 52, "Text",ExpressionUUID->"c02d701a-83f5-4b41-94bb-f052e5483e9c"],
+Cell[CellGroupData[{
+Cell[33738, 967, 336, 7, 43, "Input",ExpressionUUID->"11e15347-b7dd-4694-a685-afa018a61057"],
+Cell[34077, 976, 1063, 29, 77, "Output",ExpressionUUID->"ae267e17-a6ef-495d-9927-8426fc801625"]
+}, Open  ]],
+Cell[35155, 1008, 1077, 24, 102, "Text",ExpressionUUID->"22670e79-e909-4723-9f81-e15d980b03cf"],
+Cell[36235, 1034, 595, 13, 88, "Input",ExpressionUUID->"0d4d051f-c615-4508-a1b4-c25c56d37a22"],
+Cell[36833, 1049, 569, 16, 52, "Text",ExpressionUUID->"3818ffb0-65fe-463c-a823-b7a75a58bb19"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[37439, 1070, 161, 3, 99, "Section",ExpressionUUID->"dc630118-b326-494e-84d4-2f8d1af181f3"],
+Cell[37603, 1075, 775, 21, 52, "Text",ExpressionUUID->"fd0884b2-1c5e-4b06-882a-467ba8f0fd3b"],
+Cell[CellGroupData[{
+Cell[38403, 1100, 314, 6, 43, "Input",ExpressionUUID->"f2b08ab0-a69a-45dd-a056-710af7df039e"],
+Cell[38720, 1108, 1169, 35, 79, "Output",ExpressionUUID->"275d4dd0-1883-4368-9046-594bbab3054d"]
+}, Open  ]],
+Cell[39904, 1146, 271, 4, 52, "Text",ExpressionUUID->"efc1efab-2350-4141-9b87-54f292681c9b"],
+Cell[40178, 1152, 519, 12, 72, "Input",ExpressionUUID->"5e2d0d0a-7d93-476d-ab73-02fa0fa94c8f"],
+Cell[40700, 1166, 618, 14, 86, "Text",ExpressionUUID->"23c622c9-40ce-44a4-aebf-d67d8b95bafe"],
+Cell[41321, 1182, 527, 14, 88, "Input",ExpressionUUID->"9440b92c-7d4f-476d-bd95-784064c26f8d"],
+Cell[41851, 1198, 1217, 25, 153, "Text",ExpressionUUID->"55e65ad1-50cf-4320-ae55-08f4bb54a08b"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
