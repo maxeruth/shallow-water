@@ -4,6 +4,7 @@
 nx = tonumber(args[2])
 NX_IN = tonumber(args[3])
 NY_IN = tonumber(args[4])
+nstep = tonumber(args[5])
 -- vskip = math.floor(nx/200)
 vskip = 1
 
@@ -13,6 +14,7 @@ pond = {
   nx = nx,
   NX_IN = NX_IN,
   NY_IN = NY_IN,
+  nstep = nstep,
   vskip = vskip
 }
 
@@ -22,6 +24,7 @@ river = {
   nx = nx,
   NX_IN = NX_IN,
   NY_IN = NY_IN,
+  nstep = nstep,
   vskip = vskip
 }
 
@@ -37,6 +40,7 @@ dam = {
   nx = nx,
   NX_IN = NX_IN,
   NY_IN = NY_IN,
+  nstep = nstep,
   vskip = vskip
 }
 
@@ -49,6 +53,7 @@ wave = {
   nx = nx,
   NX_IN = NX_IN,
   NY_IN = NY_IN,
+  nstep = nstep,
   vskip = vskip
 }
 

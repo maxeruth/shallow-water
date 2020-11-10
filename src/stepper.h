@@ -63,6 +63,7 @@ typedef struct central2d_t {
     float* f;
     float* g;
     float* scratch;
+    float* u_comm; // Used for communicating
 
 } central2d_t;
 
@@ -109,7 +110,7 @@ int  central2d_offset(central2d_t* sim, int k, int ix, int iy);
  * at the reference grid.
  *
  */
-int central2d_run(central2d_t* sim, float tfinal);
+int central2d_run(central2d_t* sim, float tfinal, int n_tstep);
 
 /**
  * ### Applying boundary conditions
@@ -126,7 +127,9 @@ int central2d_run(central2d_t* sim, float tfinal);
  *
  */
 //void central2d_periodic(float* u, int nx, int ny, int ng, int nfield);
-void central2d_periodic( float* u, int nx, int ny, int ng, int nfield, int rank, int neighbors[4] );
+void central2d_periodic( float* restrict u, 
+                         int nx, int ny, int ng, int nfield, 
+                         int rank, int neighbors[4], float* restrict u_comm );
 
 //ldoc off
 #endif /* STEPPER_H */

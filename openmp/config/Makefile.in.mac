@@ -1,0 +1,18 @@
+# C compiler and flags
+CC=clang
+CFLAGS=-g
+
+# Optimization flags
+OPTFLAGS=-O3 -march=native -Xpreprocessor -fopenmp -ffast-math
+CFLAGS+=$(OPTFLAGS)
+CXXFLAGS+=$(OPTFLAGS)
+
+# Python
+PYTHON=python
+
+# Lua front-end
+LUA_CFLAGS=`pkg-config lua --cflags`
+LUA_LIBS=`pkg-config lua --libs`
+
+# Other necessary libraries
+LIBS=-Xpreprocessor -fopenmp -lomp -lm

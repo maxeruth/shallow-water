@@ -17,13 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-// The number of ghost cells
-#ifndef ng_IN
-#define ng_IN ((int) 4)
-#endif
-
-
 // The number of time steps 
 #ifndef BLOCK_STEPS
 #define BLOCK_STEPS ((int) 1)
@@ -202,6 +195,7 @@ int run_sim(lua_State* L)
     lua_getfield(L, 1, "ny");
     lua_getfield(L, 1, "NX_IN");
     lua_getfield(L, 1, "NY_IN");
+    lua_getfield(L, 1, "nstep");
     lua_getfield(L, 1, "vskip");
     lua_getfield(L, 1, "frames");
     lua_getfield(L, 1, "out");
@@ -214,14 +208,15 @@ int run_sim(lua_State* L)
     int ny_total = luaL_optinteger(L, 7, nx_total);
     int NX_IN    = luaL_optinteger(L, 8, 1);
     int NY_IN    = luaL_optinteger(L, 9, 1);
-    int vskip    = luaL_optinteger(L, 10, 1);
-    int frames   = luaL_optinteger(L, 11, 50);
-    const char* fname = luaL_optstring(L, 12, "sim.out");
-    lua_pop(L, 9);
+    int n_tstep  = luaL_optinteger(L, 10, 1);
+    int vskip    = luaL_optinteger(L, 11, 1);
+    int frames   = luaL_optinteger(L, 12, 50);
+    const char* fname = luaL_optstring(L, 13, "sim.out");
+    lua_pop(L, 12);
     // printf("In run_sim, still before any edited functions\n");
 	// Create a simulation struct, Added the inputs ng_IN, NX_IN, NY_IN
     // printf("ng_IN: %d", ng_IN);
-    central2d_t* sim = central2d_init(w,h,nx_total,ny_total,ng_IN,NX_IN,NY_IN,
+    central2d_t* sim = central2d_init(w, h, nx_total, ny_total, 4*n_tstep, NX_IN, NY_IN,
                                       3, shallow2d_flux, shallow2d_speed, cfl);
     
     //printf("Successfully initialized sim\n");
@@ -255,19 +250,19 @@ int run_sim(lua_State* L)
         
 #ifdef _OPENMP
         double t0 = omp_get_wtime();
-        int nstep = central2d_run(sim, ftime);
+        int nstep = central2d_run(sim, ftime, n_tstep);
         double t1 = omp_get_wtime();
         double elapsed = t1-t0;
 #elif defined SYSTIME
         struct timeval t0, t1;
         gettimeofday(&t0, NULL);
-        int nstep = central2d_run(sim, ftime);
+        int nstep = central2d_run(sim, ftime, n_tstep);
         gettimeofday(&t1, NULL);
         double elapsed = (t1.tv_sec-t0.tv_sec) + (t1.tv_usec-t0.tv_usec)*1e-6;
 #else
-        int nstep = central2d_run(sim, ftime);
+        int nstep = central2d_run(sim, ftime, n_tstep);
         double elapsed = 0;
-#endif
+#endif 
 		// Same as before the loop
 		gather_sol(sim,full_sim); 
 		if(sim->rank == 0){
@@ -285,7 +280,7 @@ int run_sim(lua_State* L)
 	if(sim->rank == 0){
         printf("Total compute time: %e\n", tcompute);
 		viz_close(viz); // We have only opened a file for the rank=0 node 
-	}
+	}/**/
     central2d_free(sim);
     central2d_free(full_sim); // Dunno if this has to be edited
     return 0;
