@@ -15,4 +15,4 @@
 source /etc/profile.d/modules.sh
 #module load openmpi-4.0.0
 cd $HOME/shallow-water
-mpirun -np 64 src/lshallow tests.lua dam 1000 8 8
+mpirun -np 81 src/lshallow tests.lua dam 1000 9 9
