@@ -4,8 +4,8 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage[margin = 1 in]{geometry}
-
-
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 \title{CS5220 Project 2: Shallow Water Equations}
 \author{Nick Cebry, Jiahao Li, Max Ruth}
@@ -30,11 +30,30 @@ processors of neighboring domains so that information propagates properly
 across domain boundaries.
 
 \section{The Algorithm}
-\textbf{For the purposes of this }
+\textbf{For the purposes of this algorithm, we are considering two consecutive calls to \texttt{central2d\_step} to be ``one time step,'' in order to alleviate any confusion with the shifting grids in Jiang and Tadmor.}
 
 To address the problem of parallelizing the method of Jiang and Tadmor, we use a domain decomposition method like the one introduced for Conway's Game of Life. For the problem, we assume that the domain $\Omega = (0,L)^2$ is divided into square cells, with a resolution of $M$ cells in each direction. Because the problem is periodic, this amounts to $M$ ``points'' at which the height $h$, $x$-velocity $u$, and $y$-velocity $v$ are known. To parallelize the code, we divide the domain into an $N_x\times N_y$ grid of subdomains, where each subdomain is owned by a process. By this construction, we are using a total of $N_x N_y$ processors. 
 
-As a part of this construction, each subdomain is responsible for knowing the value of $m_x \times m_y$ points \textit{at all times} where $m_x = M/N_x$ and $m_y = M/N_y$. However, due to the way information flows through a hyperbolic system of equations, we also require each processor to store a ``halo'' of ghost cells with width $m_g.$ 
+As a part of this construction, each subdomain is responsible for knowing the value of $m_x \times m_y$ points \textit{at all times} where $m_x = M/N_x$ and $m_y = M/N_y$. However, due to the way information flows through a hyperbolic system of equations, we also require each processor to store a ``halo'' of ghost cells with width $m_g.$ Each processor is not tasked with knowing the value of the ghost cells, but rather retrieves the values of the ghost cells from its neighbors. The width of the halo is related to how many time steps each processor can perform independently before information must be exchanged -- called $m_t$ -- by the relation $m_g = 4 m_t$. Independent of the number of processors (assuming $M$ is fixed), the we will call the total number of time step blocks $N_t$, so that the total number of time steps is $m_t N_t$. 
+
+We must also keep track of the maximum speed of information across all of the processors, so that each processor takes the same time step. In the code, we are currently sharing this information \textit{at every time step}, but this turns out not to be a large burden for the sizes of problems we are considering. 
+
+In total, the algorithm can be summarized by Alg.~\ref{alg:PJT}. Inside of the main loop, we first share the ghost cells. This goes in the order of pass-left and receive-right; pass-right and receive-left; pass-up and receive-down; pass-down and receive-up. In the left/right passing of ghost cells, we pass a block of size $m_g m_y$, whereas for up/down we pass a block of size $m_g (m_x + 2m_g)$, as we need to communicate the corners of the halo along with the sides in this step. 
+\begin{algorithm}
+\caption{Parallel Jiang-Tadmor Main Loop}\label{alg:PJT}
+\begin{algorithmic}
+\For {$i \gets 1$ to $N_t$}
+    \State Share ghost cells via 4 calls of \texttt{MPI\_Sendrecv}
+    \For{$j \gets 1$ to $m_t$}
+        \State Get local time step using \texttt{speed}
+        \State Get global time step via \texttt{MPI\_Allreduce}
+        \State Perform time step
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Model Speed Up}
 
 
 
