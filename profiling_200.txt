@@ -1,0 +1,542 @@
+Reading Profile files in profile.*
+
+NODE 0;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162205 .TAU application
+100.0            1       16,156           1           3   16156198 main 
+ 64.3        0.914       10,392           1         211   10392468 run_sim 
+ 54.2         0.04        8,760          50          50     175219 central2d_run 
+ 54.2        0.509        8,760          50        1250     175218 central2d_xrun 
+ 54.0            7        8,724         500       38000      17450 central2d_step 
+ 35.5        5,737        5,737           1           0    5737546 MPI_Init() 
+ 27.1           68        4,383         500      310001       8766 central2d_correct 
+ 26.6           49        4,304         500      219000       8610 central2d_predict 
+ 26.5        4,254        4,283      214500       50005         20 limited_deriv1 
+ 26.4        4,237        4,266      214500       49996         20 limited_derivk 
+  4.7        0.177          752          51         459      14762 gather_sol 
+  4.5          720          732         459       86534       1597 copy_u 
+  4.1        0.559          665         408         816       1631 recv_full_u 
+  3.4          548          548          51           0      10762 solution_check 
+  1.4          232          232          51           0       4555 viz_frame 
+  0.4           66           66           1           0      66771 viz_close 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           29       37000       37000          1 shallow2d_flux 
+  0.2            1           28         250        7000        113 central2d_periodic 
+  0.2           25           25           1           0      25172 MPI_Finalize() 
+  0.2           24           24           1           0      24371 viz_open 
+  0.1           24           24        1000           0         24 MPI_Sendrecv() 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           19           19         408           0         47 MPI_Recv() 
+  0.1           16           16       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.1           14           14      100001           0          0 central2d_offset [THROTTLED]
+  0.0            3            5           1       13467       5417 lua_init_sim 
+  0.0            5            5         250           0         21 MPI_Allreduce() 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0        0.118            1         250         250          7 shallow2d_speed 
+  0.0            1            1         250           0          7 shallow2dv_speed 
+  0.0        0.018        0.019           1           2         19 central2d_init 
+  0.0         0.01         0.01           1           0         10 MPI_Barrier() 
+  0.0        0.008        0.008           1           0          8 copy_basic_info 
+  0.0        0.002        0.002           2           0          1 central2d_free 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0            0            0           1           0          0 MPI_Comm_rank() 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 0, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 1;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162734 .TAU application
+100.0        0.934       16,156           1           3   16156297 main 
+ 63.7        0.538       10,297           1         108   10297710 run_sim 
+ 62.7        0.041       10,134          50          50     202685 central2d_run 
+ 62.7        0.538       10,134          50        1250     202684 central2d_xrun 
+ 54.1            7        8,742         500       38000      17486 central2d_step 
+ 35.5        5,736        5,736           1           0    5736991 MPI_Init() 
+ 28.2           49        4,555         500      219000       9110 central2d_predict 
+ 26.8        4,302        4,332      214500       50005         20 limited_deriv1 
+ 26.2        4,206        4,235      214500       49996         20 limited_derivk 
+ 25.7           67        4,151         500      310001       8302 central2d_correct 
+  8.6            1        1,382         250        7000       5532 central2d_periodic 
+  8.5        1,378        1,378        1000           0       1379 MPI_Sendrecv() 
+  0.7          120          120           1           0     120662 MPI_Finalize() 
+  0.7        0.038          110          51          51       2169 gather_sol 
+  0.7        0.038          110          51          51       2168 send_full_u 
+  0.7          110          110          51           0       2168 MPI_Send() 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.3           46           46           1           0      46591 MPI_Barrier() 
+  0.2           12           29       37000       37000          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            5            5         250           0         24 MPI_Allreduce() 
+  0.0            3            5           1       13467       5696 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            2            2       13467           0          0 central2d_offset 
+  0.0        0.116            1         250         250          7 shallow2d_speed 
+  0.0            1            1         250           0          7 shallow2dv_speed 
+  0.0        0.019        0.019           1           2         19 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.001        0.001           2           0          0 central2d_free 
+  0.0        0.001        0.001           1           0          1 viz_open 
+  0.0            0            0           1           0          0 MPI_Comm_rank() 
+  0.0            0            0           1           0          0 MPI_Comm_size() 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 1, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 2;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            5       16,162           1           1   16162499 .TAU application
+100.0         0.98       16,156           1           3   16156543 main 
+ 63.7        0.542       10,299           1         108   10299400 run_sim 
+ 61.9        0.035       10,011          50          50     200224 central2d_run 
+ 61.9        0.524       10,011          50        1250     200223 central2d_xrun 
+ 52.7            7        8,520         500       38000      17041 central2d_step 
+ 35.5        5,737        5,737           1           0    5737565 MPI_Init() 
+ 27.0           49        4,369         500      219000       8739 central2d_predict 
+ 26.1        4,189        4,219      214500       50033         20 limited_deriv1 
+ 25.5        4,096        4,126      214500       49968         19 limited_derivk 
+ 25.5           68        4,115         500      310001       8230 central2d_correct 
+  9.2            1        1,481         250        7000       5928 central2d_periodic 
+  9.1        1,477        1,477        1000           0       1478 MPI_Sendrecv() 
+  1.5         0.04          242          51          51       4747 gather_sol 
+  1.5        0.034          242          51          51       4746 send_full_u 
+  1.5          242          242          51           0       4745 MPI_Send() 
+  0.7          118          118           1           0     118598 MPI_Finalize() 
+  0.4           44           59      100001      100001          1 limdiff [THROTTLED]
+  0.2           40           40           1           0      40337 MPI_Barrier() 
+  0.2           12           28       37000       37000          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           15           15       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            6            6         250           0         24 MPI_Allreduce() 
+  0.0            3            5           1       13266       5208 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0         0.12            1         250         250          8 shallow2d_speed 
+  0.0            1            1       13266           0          0 central2d_offset 
+  0.0            1            1         250           0          7 shallow2dv_speed 
+  0.0        0.017        0.019           1           2         19 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_rank() 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0        0.001        0.001           1           0          1 viz_open 
+  0.0            0            0           2           0          0 central2d_free 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 2, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 3;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162081 .TAU application
+100.0        0.919       16,155           1           3   16155646 main 
+ 63.7        0.538       10,301           1         108   10301006 run_sim 
+ 61.4         0.04        9,931          50          50     198627 central2d_run 
+ 61.4        0.546        9,931          50        1250     198626 central2d_xrun 
+ 52.6            7        8,506         500       38000      17012 central2d_step 
+ 35.5        5,736        5,736           1           0    5736905 MPI_Init() 
+ 26.7           48        4,316         500      219000       8634 central2d_predict 
+ 25.8        4,141        4,170      214500       49996         19 limited_derivk 
+ 25.8        4,132        4,161      214500       50005         19 limited_deriv1 
+ 25.7           67        4,152         500      310001       8305 central2d_correct 
+  8.8            1        1,416         250        7000       5668 central2d_periodic 
+  8.7        1,412        1,412        1000           0       1413 MPI_Sendrecv() 
+  2.0        0.036          329          51          51       6463 gather_sol 
+  2.0        0.033          329          51          51       6462 send_full_u 
+  2.0          329          329          51           0       6461 MPI_Send() 
+  0.7          116          116           1           0     116816 MPI_Finalize() 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.2           34           34           1           0      34157 MPI_Barrier() 
+  0.2           12           29       37000       37000          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            5            5         250           0         22 MPI_Allreduce() 
+  0.0            3            5           1       13467       5346 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0        0.133            2         250         250          9 shallow2d_speed 
+  0.0            2            2         250           0          8 shallow2dv_speed 
+  0.0            1            1       13467           0          0 central2d_offset 
+  0.0        0.018         0.02           1           2         20 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.002        0.002           2           0          1 central2d_free 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_rank() 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 3, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 4;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,161           1           1   16161345 .TAU application
+100.0        0.976       16,155           1           3   16155329 main 
+ 63.7         0.56       10,302           1         108   10302552 run_sim 
+ 61.2        0.034        9,894          50          50     197892 central2d_run 
+ 61.2        0.509        9,894          50        1250     197892 central2d_xrun 
+ 53.9            7        8,714         500       38000      17428 central2d_step 
+ 35.5        5,737        5,737           1           0    5737599 MPI_Init() 
+ 27.0           69        4,363         500      310001       8726 central2d_correct 
+ 26.7           49        4,313         500      219000       8628 central2d_predict 
+ 26.5        4,251        4,281      214500       50005         20 limited_deriv1 
+ 26.3        4,226        4,255      214500       49996         20 limited_derivk 
+  7.3            1        1,172         250        7000       4688 central2d_periodic 
+  7.2        1,167        1,167        1000           0       1168 MPI_Sendrecv() 
+  2.3        0.044          374          51          51       7336 gather_sol 
+  2.3        0.038          374          51          51       7335 send_full_u 
+  2.3          374          374          51           0       7334 MPI_Send() 
+  0.7          114          114           1           0     114202 MPI_Finalize() 
+  0.4           43           59      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           29       37000       37000          1 shallow2d_flux 
+  0.2           27           27           1           0      27797 MPI_Barrier() 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            6            6         250           0         25 MPI_Allreduce() 
+  0.0            3            5           1       13467       5412 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            2            2       13467           0          0 central2d_offset 
+  0.0        0.124            1         250         250          7 shallow2d_speed 
+  0.0            1            1         250           0          7 shallow2dv_speed 
+  0.0         0.02        0.022           1           2         22 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.002        0.002           2           0          1 central2d_free 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_rank() 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 4, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 5;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162223 .TAU application
+100.0        0.938       16,155           1           3   16155740 main 
+ 63.8        0.572       10,304           1         108   10304183 run_sim 
+ 60.5         0.04        9,780          50          50     195604 central2d_run 
+ 60.5        0.573        9,780          50        1250     195603 central2d_xrun 
+ 52.8            7        8,531         500       38000      17064 central2d_step 
+ 35.5        5,736        5,736           1           0    5736783 MPI_Init() 
+ 26.9           50        4,343         500      219000       8687 central2d_predict 
+ 25.9        4,154        4,183      214500       50033         20 limited_deriv1 
+ 25.8        4,141        4,171      214500       49968         19 limited_derivk 
+ 25.7           69        4,151         500      310001       8302 central2d_correct 
+  7.7            1        1,239         250        7000       4958 central2d_periodic 
+  7.6        1,234        1,234        1000           0       1235 MPI_Sendrecv() 
+  3.1        0.047          495          51          51       9720 gather_sol 
+  3.1        0.073          495          51          51       9719 send_full_u 
+  3.1          495          495          51           0       9718 MPI_Send() 
+  0.7          113          113           1           0     113836 MPI_Finalize() 
+  0.4           43           59      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           29       37000       37000          1 shallow2d_flux 
+  0.1           22           22           1           0      22324 MPI_Barrier() 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16       37000           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            5            5         250           0         24 MPI_Allreduce() 
+  0.0            3            5           1       13266       5344 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0        0.126            2         250         250          9 shallow2d_speed 
+  0.0            2            2         250           0          9 shallow2dv_speed 
+  0.0            2            2       13266           0          0 central2d_offset 
+  0.0        0.018         0.02           1           2         20 central2d_init 
+  0.0        0.008        0.008           1           0          8 copy_basic_info 
+  0.0        0.002        0.002           2           0          1 central2d_free 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_rank() 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 5, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 6;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162471 .TAU application
+100.0        0.944       16,155           1           3   16155954 main 
+ 63.8        0.592       10,305           1         108   10305758 run_sim 
+ 59.9        0.043        9,680          50          50     193601 central2d_run 
+ 59.9        0.613        9,680          50        1250     193601 central2d_xrun 
+ 52.1            7        8,420         500       37500      16840 central2d_step 
+ 35.5        5,736        5,736           1           0    5736851 MPI_Init() 
+ 26.4           50        4,265         500      216000       8532 central2d_predict 
+ 25.6        4,100        4,130      211500       49996         20 limited_derivk 
+ 25.5           68        4,117         500      307001       8236 central2d_correct 
+ 25.5        4,084        4,113      211500       50005         19 limited_deriv1 
+  7.7            1        1,251         250        7000       5006 central2d_periodic 
+  7.7        1,246        1,246        1000           0       1247 MPI_Sendrecv() 
+  3.7        0.038          599          51          51      11750 gather_sol 
+  3.7        0.045          599          51          51      11749 send_full_u 
+  3.7          599          599          51           0      11748 MPI_Send() 
+  0.7          112          112           1           0     112401 MPI_Finalize() 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           29       36500       36500          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           20           20           1           0      20541 MPI_Barrier() 
+  0.1           16           16       36500           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            3            5           1       13266       5283 lua_init_sim 
+  0.0         0.16            4         250         250         17 shallow2d_speed 
+  0.0            4            4         250           0         17 shallow2dv_speed 
+  0.0            3            3         250           0         14 MPI_Allreduce() 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            1            1       13266           0          0 central2d_offset 
+  0.0        0.019        0.019           1           2         19 central2d_init 
+  0.0        0.008        0.008           1           0          8 copy_basic_info 
+  0.0        0.001        0.001           2           0          0 central2d_free 
+  0.0            0            0           1           0          0 MPI_Comm_rank() 
+  0.0            0            0           1           0          0 MPI_Comm_size() 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 6, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 7;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,163           1           1   16163852 .TAU application
+100.0        0.939       16,157           1           3   16157522 main 
+ 63.8        0.571       10,307           1         108   10307345 run_sim 
+ 59.3        0.028        9,592          50          50     191851 central2d_run 
+ 59.3        0.501        9,592          50        1250     191851 central2d_xrun 
+ 51.8            7        8,370         500       37500      16742 central2d_step 
+ 35.5        5,736        5,736           1           0    5736883 MPI_Init() 
+ 26.2           48        4,240         500      216000       8481 central2d_predict 
+ 25.4        4,078        4,107      211500       49996         19 limited_derivk 
+ 25.3           68        4,094         500      307001       8189 central2d_correct 
+ 25.3        4,061        4,090      211500       50005         19 limited_deriv1 
+  7.5            1        1,212         250        7000       4852 central2d_periodic 
+  7.5        1,208        1,208        1000           0       1209 MPI_Sendrecv() 
+  4.3         0.04          690          51          51      13536 gather_sol 
+  4.3        0.033          690          51          51      13536 send_full_u 
+  4.3          690          690          51           0      13535 MPI_Send() 
+  0.7          112          112           1           0     112355 MPI_Finalize() 
+  0.4           43           57      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           28       36500       36500          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           18           18           1           0      18634 MPI_Barrier() 
+  0.1           15           15       36500           0          0 shallow2dv_flux 
+  0.1           14           14      100001           0          0 xmin2s [THROTTLED]
+  0.0            3            5           1       13266       5191 lua_init_sim 
+  0.0        0.157            4         250         250         17 shallow2d_speed 
+  0.0            4            4         250           0         16 shallow2dv_speed 
+  0.0            4            4         250           0         16 MPI_Allreduce() 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            1            1       13266           0          0 central2d_offset 
+  0.0        0.021        0.022           1           2         22 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0            0            0           1           0          0 MPI_Comm_rank() 
+  0.0            0            0           2           0          0 central2d_free 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 7, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+NODE 8;CONTEXT 0;THREAD 0:
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,163           1           1   16163309 .TAU application
+100.0        0.944       16,157           1           3   16157234 main 
+ 63.8         0.54       10,308           1         108   10308920 run_sim 
+ 59.0        0.034        9,542          50          50     190851 central2d_run 
+ 59.0        0.533        9,542          50        1250     190850 central2d_xrun 
+ 52.6            7        8,500         500       37500      17002 central2d_step 
+ 35.5        5,737        5,737           1           0    5737591 MPI_Init() 
+ 26.5           67        4,275         500      307001       8552 central2d_correct 
+ 25.9           49        4,189         500      216000       8379 central2d_predict 
+ 25.9        4,150        4,179      211500       50033         20 limited_deriv1 
+ 25.7        4,120        4,149      211500       49968         20 limited_derivk 
+  6.4            1        1,032         250        7000       4131 central2d_periodic 
+  6.4        1,028        1,028        1000           0       1028 MPI_Sendrecv() 
+  4.6        0.042          743          51          51      14585 gather_sol 
+  4.6        0.039          743          51          51      14584 send_full_u 
+  4.6          743          743          51           0      14584 MPI_Send() 
+  0.7          109          109           1           0     109779 MPI_Finalize() 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           27       36500       36500          1 shallow2d_flux 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16           1           0      16839 MPI_Barrier() 
+  0.1           15           15       36500           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            6            6         250           0         27 MPI_Allreduce() 
+  0.0            3            5           1       13068       5128 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            1            1       13068           0          0 central2d_offset 
+  0.0        0.142            1         250         250          7 shallow2d_speed 
+  0.0            1            1         250           0          6 shallow2dv_speed 
+  0.0         0.02        0.021           1           2         21 central2d_init 
+  0.0        0.007        0.007           1           0          7 copy_basic_info 
+  0.0        0.001        0.001           1           0          1 MPI_Comm_size() 
+  0.0        0.001        0.001           2           0          0 central2d_free 
+  0.0            0            0           1           0          0 MPI_Comm_rank() 
+  0.0            0            0           1           0          0 viz_open 
+---------------------------------------------------------------------------------------
+
+USER EVENTS Profile :NODE 8, CONTEXT 0, THREAD 0
+---------------------------------------------------------------------------------------
+NumSamples   MaxValue   MinValue  MeanValue  Std. Dev.  Event Name
+---------------------------------------------------------------------------------------
+       250          4          4          4          0  Message size for all-reduce
+---------------------------------------------------------------------------------------
+
+FUNCTION SUMMARY (total):
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0           56     2:25.462           9           9   16162524 .TAU application
+100.0            8     2:25.406           9          27   16156274 main 
+ 63.8            5     1:32.819           9        1075   10313260 run_sim 
+ 60.0        0.335     1:27.327         450         450     194062 central2d_run 
+ 60.0            4     1:27.327         450       11250     194061 central2d_xrun 
+ 53.0           67     1:17.032        4500      340500      17118 central2d_step 
+ 35.5       51,634       51,634           9           0    5737190 MPI_Init() 
+ 26.7          446       38,900        4500   1.962E+06       8644 central2d_predict 
+ 26.0       37,581       37,845  1.9215E+06      450129         20 limited_deriv1 
+ 26.0          615       37,804        4500 2.78101E+06       8401 central2d_correct 
+ 25.9       37,350       37,614  1.9215E+06      449880         20 limited_derivk 
+  7.0           14       10,218        2250       63000       4542 central2d_periodic 
+  7.0       10,179       10,179        9000           0       1131 MPI_Sendrecv() 
+  3.0        0.502        4,338         459         867       9452 gather_sol 
+  2.5        0.333        3,585         408         408       8787 send_full_u 
+  2.5        3,584        3,584         408           0       8787 MPI_Send() 
+  0.6          943          943           9           0     104869 MPI_Finalize() 
+  0.5          720          732         459       86534       1597 copy_u 
+  0.5        0.559          665         408         816       1631 recv_full_u 
+  0.4          548          548          51           0      10762 solution_check 
+  0.4          391          528      900009      900009          1 limdiff [THROTTLED]
+  0.2          113          260      331500      331500          1 shallow2d_flux 
+  0.2          232          232          51           0       4555 viz_frame 
+  0.2          227          227           9           0      25248 MPI_Barrier() 
+  0.1          182          182      900009           0          0 central2d_correct_sd [THROTTLED]
+  0.1          146          146      331500           0          0 shallow2dv_flux 
+  0.1          136          136      900009           0          0 xmin2s [THROTTLED]
+  0.0           66           66           1           0      66771 viz_close 
+  0.0           49           49        2250           0         22 MPI_Allreduce() 
+  0.0           30           48           9      120000       5336 lua_init_sim 
+  0.0           24           24       54000           0          0 copy_subgrid 
+  0.0           24           24           9           0       2708 viz_open 
+  0.0            1           22        2250        2250         10 shallow2d_speed 
+  0.0           21           21        2250           0          9 shallow2dv_speed 
+  0.0           19           19         408           0         47 MPI_Recv() 
+  0.0           16           16      106533           0          0 central2d_offset 
+  0.0           14           14      100001           0          0 central2d_offset [THROTTLED]
+  0.0         0.17        0.181           9          18         20 central2d_init 
+  0.0        0.066        0.066           9           0          7 copy_basic_info 
+  0.0        0.011        0.011          18           0          1 central2d_free 
+  0.0        0.007        0.007           9           0          1 MPI_Comm_size() 
+  0.0        0.004        0.004           9           0          0 MPI_Comm_rank() 
+
+FUNCTION SUMMARY (mean):
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6       16,162           1           1   16162524 .TAU application
+100.0        0.954       16,156           1           3   16156274 main 
+ 63.8        0.596       10,313           1     119.444   10313260 run_sim 
+ 60.0       0.0372        9,703          50          50     194062 central2d_run 
+ 60.0        0.538        9,703          50        1250     194061 central2d_xrun 
+ 53.0            7        8,559         500     37833.3      17118 central2d_step 
+ 35.5        5,737        5,737           1           0    5737190 MPI_Init() 
+ 26.7           49        4,322         500      218000       8644 central2d_predict 
+ 26.0        4,175        4,205      213500     50014.3         20 limited_deriv1 
+ 26.0           68        4,200         500      309001       8401 central2d_correct 
+ 25.9        4,150        4,179      213500     49986.7         20 limited_derivk 
+  7.0            1        1,135         250        7000       4542 central2d_periodic 
+  7.0        1,131        1,131        1000           0       1131 MPI_Sendrecv() 
+  3.0       0.0558          482          51     96.3333       9452 gather_sol 
+  2.5        0.037          398     45.3333     45.3333       8787 send_full_u 
+  2.5          398          398     45.3333           0       8787 MPI_Send() 
+  0.6          104          104           1           0     104869 MPI_Finalize() 
+  0.5           80           81          51     9614.89       1597 copy_u 
+  0.5       0.0621           73     45.3333     90.6667       1631 recv_full_u 
+  0.4           60           60     5.66667           0      10762 solution_check 
+  0.4           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.2           12           28     36833.3     36833.3          1 shallow2d_flux 
+  0.2           25           25     5.66667           0       4555 viz_frame 
+  0.2           25           25           1           0      25248 MPI_Barrier() 
+  0.1           20           20      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.1           16           16     36833.3           0          0 shallow2dv_flux 
+  0.1           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            7            7    0.111111           0      66771 viz_close 
+  0.0            5            5         250           0         22 MPI_Allreduce() 
+  0.0            3            5           1     13333.3       5336 lua_init_sim 
+  0.0            2            2        6000           0          0 copy_subgrid 
+  0.0            2            2           1           0       2708 viz_open 
+  0.0        0.133            2         250         250         10 shallow2d_speed 
+  0.0            2            2         250           0          9 shallow2dv_speed 
+  0.0            2            2     45.3333           0         47 MPI_Recv() 
+  0.0            1            1       11837           0          0 central2d_offset 
+  0.0            1            1     11111.2           0          0 central2d_offset [THROTTLED]
+  0.0       0.0189       0.0201           1           2         20 central2d_init 
+  0.0      0.00733      0.00733           1           0          7 copy_basic_info 
+  0.0      0.00122      0.00122           2           0          1 central2d_free 
+  0.0     0.000778     0.000778           1           0          1 MPI_Comm_size() 
+  0.0     0.000444     0.000444           1           0          0 MPI_Comm_rank() 
