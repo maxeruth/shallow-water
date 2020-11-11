@@ -44,7 +44,25 @@ The model
 \end{enumerate}
 
 \section{Scaling and Profiling Results}
-Figure this out!
+We performed both strong and weak scaling studies to analyze the
+performance of our algorithm. For the strong scaling study, we used the
+dam break scenario, and fixed the resolution of the grid cells at 1000
+cells in both the X and Y dimensions. We then varied the number of
+processors used to compute the simulation up until a fixed simulation
+time. The size of the sub-domains varied with the number of processors in
+order to keep the problem size constant. We compare the wall clock time
+required to solve a fixed problem as the amount of compute resources
+available varies. For the weak scaling study, we again used the dam break
+scenario, but varied the resolution of the grid cells with the number of
+processors used. The resolution of the grid was varied such that each sub-
+domain was always 300 cells on each side. The simulation was run until a
+fixed amount of time had been simulated. In order to account for the
+different CFL conditions with different grid resolutions, we recorded the
+total number of time steps processed, and divided the wall clock time by
+this number to determine the average amount of time required to compute a
+single tick of the simulation. We compare the wall clock time required to
+compute a single simulation tick as both the size of the problem and the
+computational resources available scale.
 
 
 
