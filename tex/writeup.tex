@@ -16,7 +16,18 @@
 \maketitle
 
 \section{Introduction}
-This could probably be just a paragraph summarizing the assignment
+In this project, we worked with the a finite volume solver for the shallow
+water equations. These PDEs model the movement of waves in scenarios where
+the waves are long compared to the depth of the water. We were provided
+with a moderately performant single threaded version of the code, and made
+an effort to improve performance by parallelizing the algorithm. For our
+implementation, we chose to use MPI as our parallelization paradigm. Our
+algorithm divides the grid up into a series of subdomains, and assigns one
+subdomain to each processor. Processors are responsible for calculating
+the behavior of the water in their portion of the domain. They communicate
+information about the cells on the edge of their domain with the
+processors of neighboring domains so that information propagates properly
+across domain boundaries.
 
 \section{The Algorithm}
 The general process:
