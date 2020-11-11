@@ -30,6 +30,14 @@ processors of neighboring domains so that information propagates properly
 across domain boundaries.
 
 \section{The Algorithm}
+\textbf{For the purposes of this }
+
+To address the problem of parallelizing the method of Jiang and Tadmor, we use a domain decomposition method like the one introduced for Conway's Game of Life. For the problem, we assume that the domain $\Omega = (0,L)^2$ is divided into square cells, with a resolution of $M$ cells in each direction. Because the problem is periodic, this amounts to $M$ ``points'' at which the height $h$, $x$-velocity $u$, and $y$-velocity $v$ are known. To parallelize the code, we divide the domain into an $N_x\times N_y$ grid of subdomains, where each subdomain is owned by a process. By this construction, we are using a total of $N_x N_y$ processors. 
+
+As a part of this construction, each subdomain is responsible for knowing the value of $m_x \times m_y$ points \textit{at all times} where $m_x = M/N_x$ and $m_y = M/N_y$. However, due to the way information flows through a hyperbolic system of equations, we also require each processor to store a ``halo'' of ghost cells with width $m_g.$ 
+
+
+
 The general process:
 \begin{enumerate}
 	\item Used MPI
