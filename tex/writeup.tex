@@ -69,13 +69,33 @@ The model
 
 We performed both strong and weak scaling studies to analyze the performance of our algorithm. For the strong scaling study, we used the dam break scenario, and fixed the resolution of the grid cells at 1000 cells in both the X and Y dimensions. We then varied the number of processors used to compute the simulation up until a fixed simulation time. The size of the sub-domains varied with the number of processors in order to keep the problem size constant. We compare the wall clock time required to solve a fixed problem as the amount of compute resources available varies. For the weak scaling study, we again used the dam break scenario, but varied the resolution of the grid cells with the number of processors used. The resolution of the grid was varied such that each subdomain was always 300 cells on each side. The simulation was run until a fixed amount of time had been simulated. In order to account for the different CFL conditions with different grid resolutions, we recorded the total number of time steps processed, and divided the wall clock time by this number to determine the average amount of time required to compute a single tick of the simulation. We compare the wall clock time required to compute a single simulation tick as both the size of the problem and the computational resources available scale.
 
-\subsection{Profiling}
+\subsection{Profiling and Tuning}
 
-We used Tau package on Comet as the profiler tool to study the performance of our parallelization and higher-level optimization of the original codes. We used compiler-based instrumentation method, which records timing for both the MPI routines and user-defined functions in the codes. By changing the compiler from \texttt{mpicc} to \texttt{tau\_cc.sh} and adding \texttt{-tau\_options=-optCompInst} to the argument for compiling, running the program returns profiling results for each processor and we can look them up by \texttt{pprof} command.
+We used Tau package on Comet as the profiler tool to study the performance of our parallelization and higher-level optimization of the original codes. We used compiler-based instrumentation method, which records timing for both the MPI routines and user-defined functions in the codes. By changing the compiler from \texttt{mpicc} to \texttt{tau\_cc.sh} and adding \texttt{-tau\_options=-optCompInst} to the argument for compiling, running the program returns profiling results for each processor and we can look them up by \texttt{pprof} command. The profiling result shows the proportion of time spent, exclusive time, the total inclusive time, number of calls, number of subroutines as well as the average inclusive time per call for each of the functions in the program. As the parallel computing on each individual processor, except for the rank $0$ core where we expect to see different behavior due to all the subdomain data gathering to output solution after certain time steps for a rationale check, mostly the mean times spent on all the cores are compared straightforward. 
 
-We first did a direct profiling comparison between a $200\times200$ grid and a $1000\times1000$ grid, where in both cases 9 processors were called based on Comet terminal environment. Since the two are computed using the same number of cores, the main difference is the size of subdomains divided into each core, which also indicates blocking size affects the performance of codes. The profiling result shows the proportion of time spent, exclusive time, the total inclusive time, number of calls, number of subroutines as well as the average inclusive time per call for each of the functions in the program.
+We first did a direct profiling comparison between a $200\times200$ grid and a $1000\times1000$ grid, where in both cases 9 processors were called based on Comet terminal environment. Since the two are computed using the same number of cores, the main difference is the size of subdomains divided into each core, which also indicates blocking size affects the performance of codes. For a small grid problem, the \texttt{MPI\_Init()} used $35.5\%$ of the total profiling time; the major of the code \texttt{central2d\_xrun()} consists of three parts, \texttt{central2d\_step()}, \texttt{central2d\_periodic()} and a MPI routine \texttt{MPI\_Allreduce()}, taking $53.0\%$, $7.0\%$ and $0.0\%$, respectively. \texttt{central2d\_periodic()} is the modified code for inter-core communication of ghost cell; \texttt{MPI\_Allreduce()} is used for synchronizing each subdomain at the same physical time. Numerical PDE computing as well as core communication does not take up full.  When using same amount of computational resources, the situation of the large scale becomes different, where  \texttt{central2d\_step()}, \texttt{central2d\_periodic()} and  \texttt{MPI\_Allreduce()} take up $95.1\%$, $3.3\%$ and $0.0\%$ of the total time; \texttt{MPI\_Init()}  is only $0.1\%$. This indicates the bottleneck in a large scale problem running on 9 processors is positioned on how to make the PDE computing itself faster. The most time is spent in the actual PDE numerical computing, the cost of core communication is pretty small. The profiling tables are attached in the end of the report.
+
+So a
 
 
+
+
+
+
+
+\section{Conclusion}
+What we would add for next time:
+\begin{enumerate}
+	\item More careful cache performance
+	\item Tuning number of ghost cells to block size
+	\item Different sized domains/initial conditions
+	\item Deal with the fact that not all processors are the same
+	\item Think about the tradeoff between a conservative time step and communicating every step (how uneven are the time steps really?)
+	\item Communication between processors at different nodes is different than that of the same nodes?
+\end{enumerate}
+
+\appendix
+\section{Profiling table: small scale on 9 cores}
 \noindent
 {\footnotesize
 \begin{verbatim}
@@ -129,7 +149,7 @@ FUNCTION SUMMARY (mean):
 \end{verbatim}
 }
 
-
+\section{Profiling table: large scale on 9 cores}
 \noindent
 {\footnotesize
 \begin{verbatim}
@@ -181,19 +201,5 @@ FUNCTION SUMMARY (mean):
   0.0     0.000222     0.000222           1           0          0 MPI_Comm_rank() 
 \end{verbatim}
 }
-
-
-
-\section{Conclusion}
-What we would add for next time:
-\begin{enumerate}
-	\item More careful cache performance
-	\item Tuning number of ghost cells to block size
-	\item Different sized domains/initial conditions
-	\item Deal with the fact that not all processors are the same
-	\item Think about the tradeoff between a conservative time step and communicating every step (how uneven are the time steps really?)
-	\item Communication between processors at different nodes is different than that of the same nodes?
-\end{enumerate}
-
 
 \end{document}
