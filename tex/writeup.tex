@@ -161,15 +161,19 @@ As expected, the size of the problem we can compute in a given amount of
 time increases as the number of processors increase. We present a graph of
 this data in Figre \ref{fig:weak}.
 
-\subsection{Profiling and Tuning}
+\subsection{Profiling}
 
 We used Tau package on Comet as the profiler tool to study the performance of our parallelization and higher-level optimization of the original codes. We used compiler-based instrumentation method, which records timing for both the MPI routines and user-defined functions in the codes. By changing the compiler from \texttt{mpicc} to \texttt{tau\_cc.sh} and adding \texttt{-tau\_options=-optCompInst} to the argument for compiling, running the program returns profiling results for each processor and we can look them up by \texttt{pprof} command. The profiling result shows the proportion of time spent, exclusive time, the total inclusive time, number of calls, number of subroutines as well as the average inclusive time per call for each of the functions in the program. As the parallel computing on each individual processor, except for the rank $0$ core where we expect to see different behavior due to all the subdomain data gathering to output solution after certain time steps for a rationale check, mostly the mean times spent on all the cores are compared straightforward. 
 
-We first did a direct profiling comparison between a $200\times200$ grid and a $1000\times1000$ grid, where in both cases 9 processors were called based on Comet terminal environment. Since the two are computed using the same number of cores, the main difference is the size of subdomains divided into each core, which also indicates blocking size affects the performance of codes. For a small grid problem, the \texttt{MPI\_Init()} used $35.5\%$ of the total profiling time; the major of the code \texttt{central2d\_xrun()} consists of three parts, \texttt{central2d\_step()}, \texttt{central2d\_periodic()} and a MPI routine \texttt{MPI\_Allreduce()}, taking up $53.0\%$, $7.0\%$ and $0.0\%$, respectively. \texttt{central2d\_periodic()} is the modified code for inter-core communication of ghost cell; \texttt{MPI\_Allreduce()} is used for synchronizing each subdomain at the same physical time. Numerical PDE computing as well as core communication does not take up fully.  When using same amount of computational resources, the situation of the large scale becomes different, where  \texttt{central2d\_step()}, \texttt{central2d\_periodic()} and  \texttt{MPI\_Allreduce()} take up $95.1\%$, $3.3\%$ and $0.0\%$ of the total time; \texttt{MPI\_Init()}  is only $0.1\%$. This indicates the bottleneck in a large scale problem running on 9 processors is positioned on how to make the PDE computing itself faster. The most time is spent on the actual PDE numerical computing, whereas the cost of core communication is pretty small. The profiling tables are attached at the end of the report.
+We first did a direct profiling comparison between a $200\times200$ grid and a $1000\times1000$ grid, where in both cases 9 processors (blocking into $3\times3$) were called based on Comet terminal environment. Since the two are computed using the same number of cores, the main difference is the size of subdomains divided into each core, which also indicates blocking size affects the performance of codes. For a small grid problem, the \texttt{MPI\_Init()} used $35.5\%$ of the total profiling time; the major of the code \texttt{central2d\_xrun} consists of three parts, \texttt{central2d\_step}, \texttt{central2d\_periodic} and a MPI routine \texttt{MPI\_Allreduce()}, taking up $53.0\%$, $7.0\%$ and $0.0\%$, respectively. \texttt{central2d\_periodic} is the modified code for inter-core communication of ghost cell; \texttt{MPI\_Allreduce()} is used for synchronizing each subdomain at the same physical time. Numerical PDE computing as well as core communication does not take up fully.  When using same amount of computational resources, the situation of the large scale becomes different, where  \texttt{central2d\_step}, \texttt{central2d\_periodic} and  \texttt{MPI\_Allreduce()} take up $95.1\%$, $3.3\%$ and $0.0\%$ of the total time; \texttt{MPI\_Init()}  is only $0.1\%$. This indicates the bottleneck in a large scale problem running on 9 processors is positioned on how to make the PDE computing itself faster. The most time is spent on the actual PDE numerical computing, whereas the cost of core communication is pretty low. The profiling tables are attached at the end of the report.
 
-This paragraph talking on the blocking strategies: using more cores, reduce size, cache; use 81 cores profiling
+\subsection{Tuning with Blocking}
 
-This paragraph talking on advancing the timesteps: less communication, but more ghost cells, trade-off; use 81 core profiling with 2/3 timesteps
+So a direct way to speed up the computation in the large-scale problem is to introduce more resources, i.e. to decompose into more blocks and assign to more processors. We used \texttt{sbatch} command on both Graphite and Comet to submit the task in order to take advantage of the huge computational resources on these two large-scale server. A code profiling was also run by Tau on Comet utilizing 81 cores (blocking into $9\times9$), for comparison with the one using only 9 cores. Under this circumstance, the total time spent on running the whole program with profile instrumentation is greatly reduced, from 15min to 2min. When looking into the computing as well as communication, \texttt{central2d\_step}, \texttt{central2d\_periodic} and  \texttt{MPI\_Allreduce()} use up $69.3\%$, $6.0\%$ and $15.0\%$, respectively. It demonstrates that when deploying more cores to compute, the proportion of computing itself goes down, while communication and synchronization among each cores goes up. Compared with the small-scale, where the blocking size in each core is more comparable, the PDE computing is in the same scale but $9\times9$ consumes more average inclusive time per call since it still uses nearly twice as large the block size; same as the communication where $9\times9$ is around twice average per call since there are more data to exchange in the same amount of neighboring. The same trends can be found when compared with $3\times3$ on the same large-scale. However, more decomposition gives more distributed tasks to be done, meaning when the communication and synchronization is needed, it will pay more. Luckily, our parallelization optimizes the way of communication so that only the ghost cells have to be updated from the left, right, top and bottom neighboring blocks. Nevertheless, the cost of synchronization, as of \texttt{MPI\_Allreduce()}, grows tremendously from 22usec/call in $3\times3$ to 18823usec/call in $9\times9$. The blocking strategy is constraint to how many computational resources are available. There is also trade-off between the individual computing and synchronization. Block size also plays a key role in utilizing the cache. In our test, blocking works prominently well in large-scale study.
+
+\subsection{Tuning with Time-step Batching}
+
+After making the parallelized code speedup by having more individual processors, another way we tried on is to advance the time-step. In the original code, the iteration is based on a two-time-step staggered grids. During each iteration, the time is forwards two step to an updated status. In our primary parallelization, this means after two time-step, the periodic condition or individual core communication is needed in the area of the ghost cells. As a way to possible speedup, we can move forwards from the two time-step to more, so that the numbers of communication among each cores can be reduced, herein called time-step batching. We did a profile on the large-scale problem with $9\times9$ cores and a four time-step batching. The numbers of call of \texttt{central2d\_periodic} is reduced half, as expected half less of communication in four time-step batching; the inclusive total time is also decreased from 9164msec to 7437msec. However, since more time-step is forwards, which is proportional to the increase of numbers of ghost cells, as indicated that the average inclusive time per call is increased from 7562usec/call to 12437usec/call. At the same, due to the demand of time-step synchronization, $dt$ has to be communicated in every time-step. So this time-step batching does not help with the timing of texttt{MPI\_Allreduce()}. The time-step batching plays the trade-off between the numbers and the amount of required communication. However, we did not see improvement in the implementation of large-scale study.
 
 
 
@@ -289,6 +293,115 @@ FUNCTION SUMMARY (mean):
   0.0      0.00878      0.00878           1           0          9 copy_basic_info 
   0.0     0.000556     0.000556           1           0          1 MPI_Comm_size() 
   0.0     0.000222     0.000222           1           0          0 MPI_Comm_rank() 
+\end{verbatim}
+}
+
+\section{Profiling table: large scale on 81 cores}
+\noindent
+{\footnotesize
+\begin{verbatim}
+FUNCTION SUMMARY (mean):
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6     2:32.563           1           1  152563081 .TAU application
+100.0          255     2:32.556           1           3  152556601 main 
+ 97.2        0.538     2:28.236           1     109.272  148236114 run_sim 
+ 90.3       0.0432     2:17.766          50          50    2755333 central2d_run 
+ 90.3            2     2:17.766          50        6060    2755332 central2d_xrun 
+ 69.3          140     1:45.760        2424      104849      43631 central2d_step 
+ 35.0          392       53,411        2424 1.70326E+06      22034 central2d_predict 
+ 34.3       52,316       52,345 1.68145E+06       49967         31 limited_derivk 
+ 34.2       52,222       52,251 1.68145E+06       50034         31 limited_deriv1 
+ 34.2          511       52,112        2424 1.75963E+06      21498 central2d_correct 
+ 15.0       22,813       22,813        1212           0      18823 MPI_Allreduce() 
+  6.3       0.0596        9,664          51      101.37     189498 gather_sol 
+  6.2       0.0427        9,431     50.3704     50.3704     187252 send_full_u 
+  6.2        9,431        9,431     50.3704           0     187251 MPI_Send() 
+  6.0            7        9,164        1212       33936       7562 central2d_periodic 
+  6.0        9,139        9,139        4848           0       1885 MPI_Sendrecv() 
+  1.7        2,568        2,568           1           0    2568150 MPI_Init() 
+  1.0        1,496        1,496           1           0    1496864 MPI_Finalize() 
+  0.4          549          549           1           0     549138 MPI_Barrier() 
+  0.2       0.0568          229     50.3704     100.741       4554 recv_full_u 
+  0.1          225          226          51     769.988       4433 copy_u 
+  0.1          167          167     0.62963           0     266338 solution_check 
+  0.1           34           96      100001      100001          1 shallow2d_flux [THROTTLED]
+  0.0           69           69     0.62963           0     109638 viz_frame 
+  0.0           62           62      100001           0          1 shallow2dv_flux [THROTTLED]
+  0.0           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.0        0.486           25        1212        1212         21 shallow2d_speed 
+  0.0           25           25        1212           0         21 shallow2dv_speed 
+  0.0           22           22      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.0           17           17       29088           0          1 copy_subgrid 
+  0.0           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            9           14           1       37037      14530 lua_init_sim 
+  0.0            6            6     50.3704           0        125 MPI_Recv() 
+  0.0            5            5     36572.4           0          0 central2d_offset 
+  0.0            3            3   0.0123457           0     321839 viz_close 
+  0.0        0.182        0.182     1234.58           0          0 central2d_offset [THROTTLED]
+  0.0        0.118        0.118           2           0         59 central2d_free 
+  0.0       0.0138       0.0145           1           2         15 central2d_init 
+  0.0       0.0119       0.0119           1           0         12 viz_open 
+  0.0      0.00809      0.00809           1           0          8 copy_basic_info 
+  0.0     0.000481     0.000481           1           0          0 MPI_Comm_size() 
+  0.0     0.000272     0.000272           1           0          0 MPI_Comm_rank()
+\end{verbatim}
+}
+
+
+\section{Profiling table: large scale on 81 cores with 4 time-step}
+\noindent
+{\footnotesize
+\begin{verbatim}
+FUNCTION SUMMARY (mean):
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0            6     2:41.619           1           1  161619151 .TAU application
+100.0        0.911     2:41.612           1           3  161612979 main 
+ 97.6        0.537     2:37.808           1     109.272  157808979 run_sim 
+ 91.2       0.0493     2:27.456          50          50    2949131 central2d_run 
+ 91.2            1     2:27.456          50        5382    2949130 central2d_xrun 
+ 71.2          184     1:55.142        2392      104785      48137 central2d_step 
+ 37.1          415     1:00.023        2392 1.79559E+06      25093 central2d_predict 
+ 35.2       56,930       56,959 1.71666E+06     50023.1         33 limited_deriv1 
+ 35.2       56,909       56,938 1.71666E+06     49977.9         33 limited_derivk 
+ 33.9          508       54,821        2392 1.73772E+06      22919 central2d_correct 
+ 15.4       24,854       24,854        1196           0      20781 MPI_Allreduce() 
+  5.9       0.0624        9,552          51      101.37     187302 gather_sol 
+  5.8       0.0445        9,324     50.3704     50.3704     185126 send_full_u 
+  5.8        9,324        9,324     50.3704           0     185126 MPI_Send() 
+  4.6            3        7,437         598       16744      12437 central2d_periodic 
+  4.6        7,421        7,421        2392           0       3103 MPI_Sendrecv() 
+  1.6        2,592        2,592           1           0    2592271 MPI_Init() 
+  0.7        1,210        1,210           1           0    1210819 MPI_Finalize() 
+  0.3          548          548           1           0     548701 MPI_Barrier() 
+  0.1       0.0559          224     50.3704     100.741       4457 recv_full_u 
+  0.1          220          220          51     769.988       4319 copy_u 
+  0.1          167          167     0.62963           0     266331 solution_check 
+  0.1           34          113      100001      100001          1 shallow2d_flux [THROTTLED]
+  0.0           79           79      100001           0          1 shallow2dv_flux [THROTTLED]
+  0.0           67           67     0.62963           0     107823 viz_frame 
+  0.0           43           58      100001      100001          1 limdiff [THROTTLED]
+  0.0           22           22      100001           0          0 central2d_correct_sd [THROTTLED]
+  0.0        0.488           19        1196        1196         16 shallow2d_speed 
+  0.0           19           19        1196           0         16 shallow2dv_speed 
+  0.0           15           15      100001           0          0 xmin2s [THROTTLED]
+  0.0            9           14           1       37037      14556 lua_init_sim 
+  0.0           11           11       14352           0          1 copy_subgrid 
+  0.0            7            7     50.3704           0        142 MPI_Recv() 
+  0.0            5            5     36572.4           0          0 central2d_offset 
+  0.0        0.494        0.494   0.0123457           0      40006 viz_close 
+  0.0        0.186        0.186     1234.58           0          0 central2d_offset [THROTTLED]
+  0.0        0.119        0.119           2           0         60 central2d_free 
+  0.0       0.0135       0.0144           1           2         14 central2d_init 
+  0.0      0.00979      0.00979           1           0         10 viz_open 
+  0.0      0.00801      0.00801           1           0          8 copy_basic_info 
+  0.0     0.000679     0.000679           1           0          1 MPI_Comm_size() 
+  0.0     0.000247     0.000247           1           0          0 MPI_Comm_rank() 
 \end{verbatim}
 }
 
