@@ -49,21 +49,65 @@ In total, the algorithm can be summarized by Alg.~\ref{alg:PJT}. Inside of the m
 \end{algorithm}
 
 \subsection{Model Speed Up}
+\textbf{For a more detailed description of the model and the calculations, one can see the Mathematica notebook in the \texttt{tex} folder of the GitHub repository. Also, for simplicity, we will assume that $N=N_x=N_y$ in this section.}
+
+To analyze the model, we will first write the cost of each of the routines in Alg.~\ref{alg:PJT}. In this model, when we say ``cost'', we refer to some amount of time it is assumed to take to do a given operation. We will make some general assumptions about this costs of the operations, including:
+\begin{itemize}
+    \item The cost of an \texttt{MPI\_Sendrecv} between nodes follows the $\alpha$-$\beta$ model $c_{\textrm{comm}} = \alpha + \beta s$ where $s$ is the number of floats communicated (the number of floats received and sent is the same every time, so assume the cost includes both).
+    \item The cost of a time step at a single point is given by $\gamma$.
+    \item The cost of a single speed evaluation for communicating the time step is $\delta$. 
+\end{itemize}
+In the following four paragraphs, we calculate the average cost of each operation in Alg.~\ref{alg:PJT} per time step.
 
 
+\paragraph{Sharing ghost cells} This is only called once per $m_t$ time steps, so unlike the other three operations, this is divided by $m_t$. We only share each of the cells in the ghost cells once, and call \texttt{MPI\_Sendrecv} four times, so the total cost becomes
+\begin{align}
+\nonumber
+    c_{g} &\approx \frac{1}{m_t}\left(4 \alpha + 2 \beta m_g (m_x + m_y + 2m_g)\right),\\
+\label{eq:cg}
+          &= 4\frac{\alpha}{m_t} + 16 \beta \left(\frac{M}{N}  +  m_t\right).
+\end{align}
 
-The general process:
-\begin{enumerate}
-	\item Used MPI
-	\item Transfer Boundary information to left and right neighbors, the top and bottom (transferring the corners to top and bottom)
-	\item Transfer boundary information every $\tau$ steps
-	\item Transfer time step information every $\tau$ steps as well (This is what is being used in the model anyway)
-\end{enumerate}
-The model
-\begin{enumerate}
-	\item Four different contributions to batches of time steps
-	\item Give predictions for how strong scaling, weak scaling, and optimal time batching look like.
-\end{enumerate}
+\paragraph{Get local time step} In general, this step does not seem to cost a lot. However, because it includes a loop over every point, we include it. Because it is being called every time step, we have
+\begin{equation*}
+    c_{lts} \approx \delta \frac{M^2}{N^2}.
+\end{equation*}
+
+\paragraph{Share the global time step} For the call to \texttt{MPI\_Allreduce}, we assume that (1) the algorithm is implemented via some divide-and-conquer scheme and (2) the cost is dominated by latency. So, under these assumptions, we have
+\begin{equation*}
+    c_{gts} \approx \alpha \log(N^2).
+\end{equation*}
+
+\paragraph{Perform $m_t$ time steps} For this part the math gets a little complicated, as the amount of points that one must compute the time step for decreases for every iteration. However, the sums are fairly simple to compute explicitly (they can be even be done by Mathematica!). Intuitively, one would expect the cost to be approximately quadratic in $m_t$, as the number of ghost cells is $O(m_t^2)$. The result for the cost is:
+\begin{equation}
+\label{eq:cts}
+    c_{ts} = \gamma \left[ 2 \frac{M^2}{N^2}-8 \frac{M}{N} + \frac{16}{3} +16  m_t\left(\frac{M}{N} - 2\right) + \frac{128  m_t^2}{3}\right]
+\end{equation}
+
+\subsubsection{Behavior for different $m_t$}
+One question that we might ask is \textit{what is the best number of time steps to block?} We find the total cost per time step 
+\begin{equation*}
+    c = c_g + c_{lts} + c_{gts} + c_{ts},
+\end{equation*}
+has two terms which dominate in this question. One is the $\alpha/m_t$ term in \eqref{eq:cg}, associated with the benefits from amortizing the latency. Note that if we shared the time step less often, the benefit of amortization would also be seen in $c_{lts}$ and $c_{gts}$ as well.
+
+The second term that appears to dominate in big-O is the $m_t^2$ term in \eqref{eq:cts}. However, the linear term in $m_t$ in \eqref{eq:cts} is also a large contribution to poor behavior for large $m_t$, as we expect $M/N>m_t$ in general. These terms represent extra work that has to be done for computing intermediate ghost cells.
+
+Because of these two cost scalings, we expect there to be a finite optimal $m_t$. However, because we have not plugged in specific values for $\alpha,$  $\beta,$  $\gamma,$ and $\delta$ we do not know exactly the best $m_t$ for a given problem.
+
+\subsubsection{Weak Scaling}
+In the weak scaling analysis, we will use the metric of Single Point Time Step Rate to determine how effective our code is. This is similar to FLOPS, but rather than counting floating points, we consider our atomic operation to be a time step of a single point \textit{excluding ghost cells}. So, the total number of single points time stepped in each global time step is $M^2$. The rate is then simply $r_{WS} = \frac{M^2}{c}$.
+
+In the weak scaling paradigm, we will assume that the total number of single point time steps ($M^2$) scales linearly with the number of nodes ($N^2$), giving $M = M_0 N$. Plugging this assumption into our model, we find that there is only one nontrivial dependence that remains in $N$: in the \texttt{MPI\_Allreduce} command. So, the rate can be written simply as
+\begin{equation*}
+    r_{WS} \approx \frac{M_0^2 N^2}{c_0 + c_1 \log(N^2)}.
+\end{equation*}
+Thus, our model does not predict perfect weak scaling, but close enough to it. We will see that there is no noticeable slowdown from the logarithmic scaling in our simulations, however the largest value of $N$ we reach is $9$, which likely is a small perturbation to the constant term in $c$.  
+
+\subsubsection{Strong Scaling} 
+In the strong scaling analysis, we instead fix $M$ and increase $N$ separately. There are a variety of terms that strong-scale well, such as the whole of $c_{gts}$ and the time steps non-ghost cells of the nodes. However, steps such as sharing ghost cells and the time step can even get worse as $N$ increases, showing that continuously adding more nodes will eventually fail for strong scaling. We never reached the this strong scaling limit though (as our code fails when $m_g > m_x$ or $m_g>m_y$ anyway).
+
+
 
 \section{Scaling and Profiling Results}
 \subsection{Scaling Studies}
