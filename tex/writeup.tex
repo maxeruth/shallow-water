@@ -222,15 +222,11 @@ After making the parallelized code speedup by having more individual processors,
 
 
 \section{Conclusion}
-What we would add for next time:
-\begin{enumerate}
-	\item More careful cache performance
-	\item Tuning number of ghost cells to block size
-	\item Different sized domains/initial conditions
-	\item Deal with the fact that not all processors are the same
-	\item Think about the tradeoff between a conservative time step and communicating every step (how uneven are the time steps really?)
-	\item Communication between processors at different nodes is different than that of the same nodes?
-\end{enumerate}
+While we did profiling and scaling studies on our code, there are still a variety of improvements that could be made. For instance, despite these studies, we have done no in-depth analysis of the cache performance of the code, which is an important detail for performance that was totally neglected. Another factor that is not considered in the profiling is any measure of the time that MPI communication steps spend waiting for other processors. From the a tau profiling of a 9-processor run on Comet, we found that one processor spent a significantly smaller amount of time on \texttt{MPI\_Sendrecv} than any of the other processors, indicating that the other processors were probably waiting for a single subdomain of the code to run. A more adaptive method of load balancing would certainly help alleviate these sorts of problems. 
+
+Another problem that we might face as we scale up this code is communicating the time step. Currently, the code communicates the time step at every step, whereas it might be improved communicating less frequently and taking slightly smaller step sizes. This is seen most acutely through the profiling of the $9\times 9$ processor profiling, where the \texttt{MPI\_Allreduce} step takes a much larger percentage of the total time than in the $3\times3$ profiling case. As the number of processors increases, this result would only get worse. 
+
+Finally, we would probably have to think a bit more about the architectures of the computers we are specifically running on. For instance, when one looks at the graph for the strong scaling, there are clear, strange effects when the number of processors jumps from $9$ to $16$ processors, which corresponds to switching from one to two node architectures. It is likely that the different models for MPI sends and receives are responsible for significant effects in the speed of the code, and we could certainly make improvements in this direction.
 
 \appendix
 \section{Profiling table: small scale on 9 cores}
